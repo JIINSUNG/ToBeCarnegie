@@ -1,6 +1,6 @@
 import { useSession } from "../session";
 
-export function Home() {
+export function Home({ onPeople }: { onPeople: () => void }) {
   const { vault, lock } = useSession();
 
   return (
@@ -25,6 +25,23 @@ export function Home() {
       ) : (
         <p style={{ color: "var(--muted)", fontSize: 14 }}>{vault?.people.length}명 기록됨</p>
       )}
+
+      <button
+        type="button"
+        onClick={onPeople}
+        style={{
+          marginTop: 8,
+          padding: "12px 16px",
+          borderRadius: "var(--radius)",
+          border: "none",
+          background: "var(--accent)",
+          color: "var(--accent-fg)",
+          fontSize: 15,
+          fontWeight: 600,
+        }}
+      >
+        사람 목록 보기
+      </button>
     </main>
   );
 }
