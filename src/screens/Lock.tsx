@@ -99,7 +99,7 @@ export function Lock() {
 
       {isSetup && syncConfigured && (
         <button type="button" onClick={submitJoinFromCloud} disabled={busy} style={passkeyButtonStyle}>
-          다른 기기에서 이미 쓰고 있어요 (클라우드에서 불러오기)
+          다른 기기에서 이미 쓰고 있어요 (구글 계정으로 불러오기)
         </button>
       )}
 

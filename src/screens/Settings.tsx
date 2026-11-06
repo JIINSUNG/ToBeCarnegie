@@ -139,7 +139,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
       {syncConfigured && (
         <section style={sectionStyle}>
           <h2 style={headingStyle}>동기화</h2>
-          <p style={hintStyle}>다른 기기와 맞춰요. 여기서도 암호화된 채로만 오가요.</p>
+          <p style={hintStyle}>구글 계정으로 다른 기기와 맞춰요. 여기서도 암호화된 채로만 오가요(처음엔 구글 로그인 창이 떠요).</p>
           <button type="button" onClick={handleSync} disabled={syncBusy} style={primaryBtnStyle}>
             {syncBusy ? "동기화 중…" : "지금 동기화"}
           </button>
