@@ -24,6 +24,8 @@ export interface Person {
 export interface Vault {
   version: number;
   people: Person[];
+  /** 마지막으로 백업 파일·코드를 내보낸 시각 (derive.ts의 백업 알림이 참고). */
+  lastBackupAt?: number;
 }
 
 export function emptyVault(): Vault {
