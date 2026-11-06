@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { emptyVault } from "../types";
 import {
+  addGift,
   addNote,
   createPerson,
+  deleteGift,
   deleteNote,
   deletePerson,
   findPerson,
   isValidBirthday,
   searchPeople,
+  toggleGiftRepaid,
   touchLastContact,
   updateNote,
   updatePerson,
@@ -69,6 +72,34 @@ describe("people", () => {
     expect(searchPeople(v, "대학동기").map((p) => p.name)).toEqual(["김민수"]);
     expect(searchPeople(v, "고양이").map((p) => p.name)).toEqual(["이지은"]);
     expect(searchPeople(v, "").map((p) => p.name)).toEqual(["김민수", "이지은"]);
+  });
+
+  it("addGift·toggleGiftRepaid·deleteGift가 그 사람의 gifts만 건드린다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    v = addGift(v, id, "생일 선물로 향수 받음");
+    expect(findPerson(v, id)?.gifts).toHaveLength(1);
+    const giftId = findPerson(v, id)!.gifts![0].id;
+    expect(findPerson(v, id)?.gifts![0].repaid).toBe(false);
+
+    v = toggleGiftRepaid(v, id, giftId);
+    expect(findPerson(v, id)?.gifts![0].repaid).toBe(true);
+    expect(findPerson(v, id)?.gifts![0].repaidAt).toBeTypeOf("number");
+
+    v = toggleGiftRepaid(v, id, giftId);
+    expect(findPerson(v, id)?.gifts![0].repaid).toBe(false);
+    expect(findPerson(v, id)?.gifts![0].repaidAt).toBeUndefined();
+
+    v = deleteGift(v, id, giftId);
+    expect(findPerson(v, id)?.gifts).toHaveLength(0);
+  });
+
+  it("gifts 필드가 없는(이전 버전) 사람에도 addGift가 안전하게 동작한다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    v = { ...v, people: v.people.map((p) => ({ ...p, gifts: undefined })) };
+    v = addGift(v, id, "명절 선물 받음");
+    expect(findPerson(v, id)?.gifts).toHaveLength(1);
   });
 
   it("isValidBirthday는 MM-DD 형식과 실제 존재하는 날짜만 통과시킨다", () => {

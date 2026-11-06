@@ -7,6 +7,16 @@ export interface Note {
   updatedAt: number;
 }
 
+/** 받은 선물 — 나중에 뭘로 갚을지/갚았는지 체크하는 용도. */
+export interface Gift {
+  id: string;
+  text: string;
+  at: number;
+  repaid: boolean;
+  repaidAt?: number;
+  updatedAt: number;
+}
+
 export interface Person {
   id: string;
   name: string;
@@ -16,6 +26,8 @@ export interface Person {
   /** 마지막으로 연락·만남한 시각(사용자가 직접 갱신). */
   lastContactAt?: number;
   notes: Note[];
+  /** 이전 버전 데이터엔 없을 수 있어 optional — 읽을 땐 항상 `person.gifts ?? []`로 다뤄요. */
+  gifts?: Gift[];
   createdAt: number;
   updatedAt: number;
 }

@@ -1,13 +1,13 @@
 // Vault 안의 Person 배열을 다루는 순수 함수들. 전부 "새 Vault를 돌려주는" 불변 업데이트 방식이라
 // session.tsx의 update(fn)에 그대로 넘겨 쓸 수 있다.
 import { nanoid } from "nanoid";
-import type { Note, Person, Vault } from "../types";
+import type { Gift, Note, Person, Vault } from "../types";
 
 /** id를 안 넘기면 새로 만든다. session.tsx의 update(fn) 안에서 쓸 땐, fn이 두 번 호출돼도(React
  * StrictMode) 같은 사람이 만들어지도록 id를 밖에서 미리 만들어 넘기는 쪽을 권장한다. */
 export function createPerson(vault: Vault, name: string, id: string = nanoid()): Vault {
   const now = Date.now();
-  const person: Person = { id, name, tags: [], notes: [], createdAt: now, updatedAt: now };
+  const person: Person = { id, name, tags: [], notes: [], gifts: [], createdAt: now, updatedAt: now };
   return { ...vault, people: [...vault.people, person] };
 }
 
@@ -52,6 +52,40 @@ export function deleteNote(vault: Vault, personId: string, noteId: string): Vaul
     ...vault,
     people: vault.people.map((p) =>
       p.id === personId ? { ...p, notes: p.notes.filter((n) => n.id !== noteId), updatedAt: Date.now() } : p
+    ),
+  };
+}
+
+export function addGift(vault: Vault, personId: string, text: string): Vault {
+  const now = Date.now();
+  const gift: Gift = { id: nanoid(), text, at: now, repaid: false, updatedAt: now };
+  return {
+    ...vault,
+    people: vault.people.map((p) => (p.id === personId ? { ...p, gifts: [...(p.gifts ?? []), gift], updatedAt: now } : p)),
+  };
+}
+
+export function toggleGiftRepaid(vault: Vault, personId: string, giftId: string): Vault {
+  const now = Date.now();
+  return {
+    ...vault,
+    people: vault.people.map((p) =>
+      p.id === personId
+        ? {
+            ...p,
+            gifts: (p.gifts ?? []).map((g) => (g.id === giftId ? { ...g, repaid: !g.repaid, repaidAt: !g.repaid ? now : undefined, updatedAt: now } : g)),
+            updatedAt: now,
+          }
+        : p
+    ),
+  };
+}
+
+export function deleteGift(vault: Vault, personId: string, giftId: string): Vault {
+  return {
+    ...vault,
+    people: vault.people.map((p) =>
+      p.id === personId ? { ...p, gifts: (p.gifts ?? []).filter((g) => g.id !== giftId), updatedAt: Date.now() } : p
     ),
   };
 }

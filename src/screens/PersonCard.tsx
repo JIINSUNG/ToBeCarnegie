@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSession } from "../session";
-import { addNote, deleteNote, deletePerson, findPerson, touchLastContact } from "../lib/people";
+import { addGift, addNote, deleteGift, deleteNote, deletePerson, findPerson, toggleGiftRepaid, touchLastContact } from "../lib/people";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
 
 function formatDate(ts: number) {
@@ -12,6 +12,8 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
   const { vault, update } = useSession();
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [giftDraft, setGiftDraft] = useState("");
+  const [giftError, setGiftError] = useState<string | null>(null);
   const person = vault ? findPerson(vault, id) : undefined;
 
   if (!person) {
@@ -36,6 +38,19 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
     setError(null);
     update((v) => addNote(v, id, text));
     setDraft("");
+  };
+
+  const addDraftGift = () => {
+    const text = giftDraft.trim();
+    if (!text) return;
+    const reason = checkSensitive(text);
+    if (reason) {
+      setGiftError(BLOCK_REASON_LABEL[reason]);
+      return;
+    }
+    setGiftError(null);
+    update((v) => addGift(v, id, text));
+    setGiftDraft("");
   };
 
   const removePerson = () => {
@@ -113,6 +128,68 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
                   삭제
                 </button>
               </div>
+            </div>
+          ))}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid var(--line)", paddingTop: 14 }}>
+        <h2 style={{ fontSize: 14, margin: 0, color: "var(--fg2)" }}>받은 선물</h2>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            placeholder="예: 생일 선물로 향수"
+            value={giftDraft}
+            onChange={(e) => {
+              setGiftDraft(e.target.value);
+              setGiftError(null);
+            }}
+            onKeyDown={(e) => e.key === "Enter" && addDraftGift()}
+            style={{ flex: 1, padding: "10px 12px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--card)", fontSize: 14 }}
+          />
+          <button
+            type="button"
+            onClick={addDraftGift}
+            disabled={!giftDraft.trim()}
+            style={{ padding: "0 14px", borderRadius: "var(--radius)", border: "none", background: "var(--accent)", color: "var(--accent-fg)", fontSize: 13.5, fontWeight: 600 }}
+          >
+            추가
+          </button>
+        </div>
+        {giftError && <p style={{ color: "var(--warn)", fontSize: 13, margin: 0 }}>{giftError}</p>}
+
+        {(person.gifts ?? []).length === 0 && <p style={{ color: "var(--muted)", fontSize: 13.5, margin: 0 }}>아직 받은 선물이 없어요.</p>}
+        {[...(person.gifts ?? [])]
+          .sort((a, b) => b.at - a.at)
+          .map((g) => (
+            <div key={g.id} style={{ padding: "10px 12px", borderRadius: "var(--radius)", background: "var(--field)", display: "flex", alignItems: "center", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => update((v) => toggleGiftRepaid(v, id, g.id))}
+                aria-pressed={g.repaid}
+                aria-label={g.repaid ? "갚음 표시 해제" : "갚음으로 표시"}
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 6,
+                  border: "1px solid var(--line)",
+                  background: g.repaid ? "var(--ok)" : "var(--card)",
+                  color: "#fff",
+                  fontSize: 13,
+                  flexShrink: 0,
+                }}
+              >
+                {g.repaid ? "✓" : ""}
+              </button>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: 0, fontSize: 14, textDecoration: g.repaid ? "line-through" : "none", color: g.repaid ? "var(--muted)" : "var(--fg)" }}>{g.text}</p>
+                <span style={{ color: "var(--muted)", fontSize: 11.5 }}>{g.repaid ? `${formatDate(g.repaidAt ?? g.at)} 갚음` : `${formatDate(g.at)} 받음`}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => update((v) => deleteGift(v, id, g.id))}
+                style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 11.5 }}
+              >
+                삭제
+              </button>
             </div>
           ))}
       </div>
