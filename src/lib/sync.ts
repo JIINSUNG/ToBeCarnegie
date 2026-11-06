@@ -1,6 +1,6 @@
-// Firebase 구글 로그인 + Firestore로 "소유자 1명"의 암호화된 Vault를 동기화한다.
+// Firebase 구글 로그인 + Firestore로, 로그인한 사람의 암호화된 Vault를 계정별로 동기화한다.
 // 여기서 주고받는 건 항상 StoredVault(마스터 키로 암호화된 블롭)뿐 — 평문은 절대 안 나간다.
-// firestore.rules가 MY_UID 한 명의 uid만 읽기/쓰기를 허용하므로, 다른 구글 계정은 거부당한다.
+// firestore.rules가 "자기 uid 문서만" 읽고 쓸 수 있게 막아서, 다른 사람 Vault는 아예 안 보인다.
 // (uid는 구글 계정에 고정되니 브라우저 데이터를 지워도 같은 계정으로 다시 들어오면 그대로 이어진다.)
 // 2단계 전용 — VITE_FIREBASE_* 환경변수가 없으면(.env.local 미설정) 아무 것도 하지 않는다.
 import { initializeApp, type FirebaseApp } from "firebase/app";
@@ -45,8 +45,7 @@ function getDb(): Firestore {
 }
 
 /** 구글 계정으로 로그인하고 uid를 돌려준다(이미 로그인돼 있으면 팝업 없이 그대로 씀).
- * firestore.rules가 이미 등록해둔 MY_UID만 허용하므로, 소유자의 구글 계정이 아니면
- * 이후 읽기/쓰기에서 전부 거부된다. */
+ * 이후 읽기/쓰기는 이 uid 문서(vaults/{uid})로만 가서, 다른 사람 데이터와 섞이지 않는다. */
 export async function signInOwner(): Promise<string> {
   const auth = getAuthInstance();
   if (auth.currentUser) return auth.currentUser.uid;

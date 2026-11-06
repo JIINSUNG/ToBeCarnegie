@@ -7,7 +7,7 @@ UI 문구는 전부 한국어 존댓말. 모바일 우선(390px), 한 손 조작
 1. **운영 비용 0원.** 서버 코드·유료 API·AI API 없음. 정적 호스팅(Vercel/Cloudflare Pages) + Firebase 무료 요금제(Spark)만.
 2. **평문은 기기 밖으로도, 저장소에도 남기지 않는다.** IndexedDB·백업 파일·Firestore에는 항상 암호화된 `Vault`만 저장. 복호화 키는 메모리에만 두고 잠금 시 버린다.
 3. **공유 기능 없음.** 남에게 보내기·공개 링크·연락처 가져오기·SNS 연동·사진·위치 기능은 만들지 않는다.
-4. **동기화는 소유자 1명 전용.** Firestore 규칙에서 소유자 uid 하나만 허용. 소유자 uid는 `firestore.rules`에만 쓰고 앱 코드·커밋에는 넣지 않는다(`MY_UID` 자리 표시). Firebase 설정값은 `.env.local`(VITE_FIREBASE_*)로, `.env.local`은 커밋하지 않는다.
+4. **동기화는 계정별로 완전히 분리.** 구글 로그인한 사람은 누구나 쓸 수 있지만, Firestore 규칙에서 `request.auth.uid`가 자기 문서(`vaults/{uid}`)일 때만 읽기/쓰기를 허용 — 남의 Vault는 절대 못 본다. Firebase 설정값은 `.env.local`(VITE_FIREBASE_*)로, `.env.local`은 커밋하지 않는다.
 5. **입력 필터:** 주민등록번호, 카드번호(Luhn 통과), "비밀번호·비번·현관·도어락" 뒤의 값은 저장 차단. 그 외 내용은 사용자 자율.
 6. 새 의존성은 꼭 필요할 때만, 추가 전에 이유를 말한다.
 

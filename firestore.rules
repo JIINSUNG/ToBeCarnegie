@@ -1,12 +1,11 @@
 rules_version = '2';
 
-// 동기화는 소유자 1명 전용. MY_UID를 처음 익명 로그인했을 때 받은 본인 uid로 바꿔 넣고 배포하세요:
-//   firebase deploy --only firestore:rules
-// 이 uid는 커밋하지 않습니다(이 파일만 로컬에서 바꿔서 배포).
+// 구글 계정으로 로그인한 사람은 누구나 쓸 수 있되, 자기 uid 문서(vaults/{uid})만 읽고 쓸 수 있다.
+// 다른 사람의 Vault는 애초에 규칙상 접근이 안 된다 — 계정별 완전 분리.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /vaults/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == "MY_UID";
+      allow read, write: if request.auth != null && request.auth.uid == uid;
     }
   }
 }
