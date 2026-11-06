@@ -4,7 +4,7 @@ import { useSession } from "../session";
 const MIN_LENGTH = 8;
 
 export function Lock() {
-  const { status, error, hasPasskey, setup, unlock, unlockPasskey } = useSession();
+  const { status, error, hasPasskey, syncConfigured, setup, unlock, unlockPasskey, joinFromCloud } = useSession();
   const isSetup = status === "needs-setup";
   const [pass, setPass] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -15,6 +15,17 @@ export function Lock() {
     setLocalError(null);
     setBusy(true);
     await unlockPasskey();
+    setBusy(false);
+  };
+
+  const submitJoinFromCloud = async () => {
+    setLocalError(null);
+    if (!pass) {
+      setLocalError("클라우드에서 쓰던 암호를 입력해주세요.");
+      return;
+    }
+    setBusy(true);
+    await joinFromCloud(pass);
     setBusy(false);
   };
 
@@ -83,6 +94,12 @@ export function Lock() {
       {!isSetup && hasPasskey && (
         <button type="button" onClick={submitPasskey} disabled={busy} style={passkeyButtonStyle}>
           패스키로 잠금 해제
+        </button>
+      )}
+
+      {isSetup && syncConfigured && (
+        <button type="button" onClick={submitJoinFromCloud} disabled={busy} style={passkeyButtonStyle}>
+          다른 기기에서 이미 쓰고 있어요 (클라우드에서 불러오기)
         </button>
       )}
 

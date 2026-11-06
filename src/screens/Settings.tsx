@@ -21,14 +21,25 @@ function downloadBackupFile(file: BackupFile) {
 }
 
 export function Settings({ onBack }: { onBack: () => void }) {
-  const { vault, exportBackup, restoreBackup, hasPasskey, registerPasskey, removePasskey } = useSession();
+  const { vault, exportBackup, restoreBackup, hasPasskey, registerPasskey, removePasskey, syncConfigured, syncNow } = useSession();
   const [code, setCode] = useState("");
   const [pasteCode, setPasteCode] = useState("");
   const [incoming, setIncoming] = useState<BackupFile | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const [syncBusy, setSyncBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSync = async () => {
+    setSyncBusy(true);
+    const ok = await syncNow();
+    setSyncBusy(false);
+    if (ok) {
+      setMessage("동기화했어요.");
+      setError(null);
+    }
+  };
 
   const handleRegisterPasskey = async () => {
     setPasskeyBusy(true);
@@ -124,6 +135,16 @@ export function Settings({ onBack }: { onBack: () => void }) {
           </label>
         )}
       </section>
+
+      {syncConfigured && (
+        <section style={sectionStyle}>
+          <h2 style={headingStyle}>동기화</h2>
+          <p style={hintStyle}>다른 기기와 맞춰요. 여기서도 암호화된 채로만 오가요.</p>
+          <button type="button" onClick={handleSync} disabled={syncBusy} style={primaryBtnStyle}>
+            {syncBusy ? "동기화 중…" : "지금 동기화"}
+          </button>
+        </section>
+      )}
 
       {isPasskeySupported() && (
         <section style={sectionStyle}>

@@ -26,6 +26,8 @@ import {
 } from "./lib/storage";
 import { registerPasskey as registerPasskeyCredential, unlockWithPasskey } from "./lib/passkey";
 import { createBackupFile, restoreMerge, restoreOverwrite, type BackupFile } from "./lib/backup";
+import { mergeVaults } from "./lib/merge";
+import { isSyncConfigured, pullStoredVault, pushStoredVault, signInOwner } from "./lib/sync";
 import { emptyVault, type Vault } from "./types";
 
 type Status = "loading" | "needs-setup" | "locked" | "unlocked";
@@ -40,15 +42,18 @@ interface SessionValue {
   vault: Vault | null;
   error: string | null;
   hasPasskey: boolean;
+  syncConfigured: boolean;
   setup: (passphrase: string) => Promise<void>;
   unlock: (passphrase: string) => Promise<boolean>;
   unlockPasskey: () => Promise<boolean>;
+  joinFromCloud: (passphrase: string) => Promise<boolean>;
   lock: () => void;
   update: (fn: (v: Vault) => Vault) => void;
   registerPasskey: (accountName: string) => Promise<boolean>;
   removePasskey: () => void;
   exportBackup: () => Promise<BackupFile | null>;
   restoreBackup: (file: BackupFile, mode: "merge" | "overwrite") => Promise<boolean>;
+  syncNow: () => Promise<boolean>;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -95,12 +100,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [persist]
   );
 
-  const unlock = useCallback(async (passphrase: string) => {
-    const stored = await loadStoredVault();
-    if (!stored) {
-      setStatus("needs-setup");
-      return false;
-    }
+  const unlockFromStored = useCallback(async (passphrase: string, stored: StoredVault): Promise<boolean> => {
     try {
       const salt = saltFromBase64(stored.passphrase.salt);
       const kek = await deriveKey(passphrase, salt, stored.passphrase.iterations);
@@ -118,6 +118,39 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       return false;
     }
   }, []);
+
+  const unlock = useCallback(
+    async (passphrase: string) => {
+      const stored = await loadStoredVault();
+      if (!stored) {
+        setStatus("needs-setup");
+        return false;
+      }
+      return unlockFromStored(passphrase, stored);
+    },
+    [unlockFromStored]
+  );
+
+  /** 다른 기기에서 이미 동기화해둔 Vault가 있을 때, 이 기기는 새로 만들지 않고 그걸 받아 합류한다. */
+  const joinFromCloud = useCallback(
+    async (passphrase: string): Promise<boolean> => {
+      try {
+        const uid = await signInOwner();
+        const remote = await pullStoredVault(uid);
+        if (!remote) {
+          setError("클라우드에 저장된 백업이 아직 없어요.");
+          return false;
+        }
+        const ok = await unlockFromStored(passphrase, remote);
+        if (ok) await saveStoredVault(remote);
+        return ok;
+      } catch {
+        setError("클라우드에 연결하지 못했어요. 동기화 설정을 확인해주세요.");
+        return false;
+      }
+    },
+    [unlockFromStored]
+  );
 
   const unlockPasskey = useCallback(async () => {
     const stored = await loadStoredVault();
@@ -225,8 +258,49 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [masterKey, update]
   );
 
+  /** 지금 들고 있는 Vault를 클라우드와 맞춘다: 받아온 내용과 항목별 최신 우선으로 합친 뒤 다시 올린다. */
+  const syncNow = useCallback(async (): Promise<boolean> => {
+    if (!vault || !masterKey || !wraps) return false;
+    try {
+      const uid = await signInOwner();
+      const remoteStored = await pullStoredVault(uid);
+      let finalVault = vault;
+      if (remoteStored) {
+        const remoteVault = await decryptWithKey<Vault>(masterKey, { iv: remoteStored.iv, cipher: remoteStored.cipher });
+        finalVault = mergeVaults(vault, remoteVault);
+      }
+      await persist(finalVault, masterKey, wraps);
+      setVault(finalVault);
+      const blob = await encryptWithKey(masterKey, finalVault);
+      await pushStoredVault(uid, { iv: blob.iv, cipher: blob.cipher, updatedAt: Date.now(), passphrase: wraps.passphrase, passkey: wraps.passkey });
+      setError(null);
+      return true;
+    } catch {
+      setError("동기화에 실패했어요. (다른 기기와 다른 암호로 시작했을 수 있어요)");
+      return false;
+    }
+  }, [vault, masterKey, wraps, persist]);
+
   const value = useMemo<SessionValue>(
     () => ({
+      status,
+      vault,
+      error,
+      hasPasskey,
+      syncConfigured: isSyncConfigured(),
+      setup,
+      unlock,
+      unlockPasskey,
+      joinFromCloud,
+      lock,
+      update,
+      registerPasskey,
+      removePasskey,
+      exportBackup,
+      restoreBackup,
+      syncNow,
+    }),
+    [
       status,
       vault,
       error,
@@ -234,14 +308,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setup,
       unlock,
       unlockPasskey,
+      joinFromCloud,
       lock,
       update,
       registerPasskey,
       removePasskey,
       exportBackup,
       restoreBackup,
-    }),
-    [status, vault, error, hasPasskey, setup, unlock, unlockPasskey, lock, update, registerPasskey, removePasskey, exportBackup, restoreBackup]
+      syncNow,
+    ]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
