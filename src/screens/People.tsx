@@ -1,11 +1,33 @@
 import { useState } from "react";
 import { useSession } from "../session";
 import { searchPeople } from "../lib/people";
+import { relationshipTemp, upcomingBirthdays, type RelationshipTemp } from "../lib/derive";
+import type { Person } from "../types";
+
+const TEMP_COLOR: Record<RelationshipTemp, string> = {
+  warm: "var(--accent)",
+  normal: "var(--muted)",
+  cooling: "var(--warn)",
+  unknown: "var(--line)",
+};
+
+function formatDate(ts: number) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function statusLine(person: Person): string {
+  if (!person.lastContactAt) return "아직 연락 기록 없음";
+  const temp = relationshipTemp(person);
+  const label = temp === "warm" ? "최근 연락함" : temp === "normal" ? "연락함" : "연락 뜸해짐";
+  return `${label} · ${formatDate(person.lastContactAt)}`;
+}
 
 export function People({ onOpen, onAdd, onBack }: { onOpen: (id: string) => void; onAdd: () => void; onBack: () => void }) {
   const { vault } = useSession();
   const [q, setQ] = useState("");
   const list = vault ? searchPeople(vault, q) : [];
+  const birthdaySoon = new Map((vault ? upcomingBirthdays(vault) : []).map((b) => [b.person.id, b.daysUntil]));
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 16 }}>
@@ -32,30 +54,77 @@ export function People({ onOpen, onAdd, onBack }: { onOpen: (id: string) => void
         </p>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {list.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => onOpen(p.id)}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-start",
-              gap: 4,
-              padding: "12px 14px",
-              borderRadius: "var(--radius)",
-              border: "1px solid var(--line)",
-              background: "var(--card)",
-              textAlign: "left",
-            }}
-          >
-            <b style={{ fontSize: 15.5 }}>{p.name}</b>
-            <span style={{ color: "var(--muted)", fontSize: 12.5 }}>
-              {p.tags.length > 0 ? p.tags.join(" · ") : `기록 ${p.notes.length}개`}
-            </span>
-          </button>
-        ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {list.map((p) => {
+          const temp = relationshipTemp(p);
+          const daysUntilBirthday = birthdaySoon.get(p.id);
+          const pendingGifts = (p.gifts ?? []).filter((g) => !g.repaid).length;
+
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onOpen(p.id)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "14px 16px",
+                borderRadius: 16,
+                border: "1px solid var(--line)",
+                background: "var(--card)",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                textAlign: "left",
+              }}
+            >
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: "50%",
+                  background: TEMP_COLOR[temp],
+                  color: "var(--accent-fg)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 17,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}
+              >
+                {p.name.slice(0, 1)}
+              </div>
+
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <b style={{ fontSize: 16 }}>{p.name}</b>
+                  {daysUntilBirthday !== undefined && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "var(--field)", borderRadius: 999, padding: "2px 7px" }}>
+                      🎂 {daysUntilBirthday === 0 ? "오늘" : `D-${daysUntilBirthday}`}
+                    </span>
+                  )}
+                  {pendingGifts > 0 && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--warn)", background: "var(--field)", borderRadius: 999, padding: "2px 7px" }}>
+                      🎁 갚을 선물 {pendingGifts}
+                    </span>
+                  )}
+                </div>
+
+                {p.tags.length > 0 && (
+                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                    {p.tags.map((t) => (
+                      <span key={t} style={{ fontSize: 11.5, color: "var(--fg2)", background: "var(--field)", borderRadius: 999, padding: "2px 8px" }}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <span style={{ color: "var(--muted)", fontSize: 12.5 }}>{statusLine(p)}</span>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </main>
   );
