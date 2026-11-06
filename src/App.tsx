@@ -5,8 +5,16 @@ import { Home } from "./screens/Home";
 import { People } from "./screens/People";
 import { PersonCard } from "./screens/PersonCard";
 import { PersonEdit } from "./screens/PersonEdit";
+import { Briefing } from "./screens/Briefing";
+import { Settings } from "./screens/Settings";
 
-type View = { name: "home" } | { name: "people" } | { name: "card"; id: string } | { name: "edit"; id: string | null };
+type View =
+  | { name: "home" }
+  | { name: "people" }
+  | { name: "card"; id: string }
+  | { name: "edit"; id: string | null }
+  | { name: "briefing" }
+  | { name: "settings" };
 
 function Gate() {
   const { status } = useSession();
@@ -17,7 +25,13 @@ function Gate() {
 
   switch (view.name) {
     case "home":
-      return <Home onPeople={() => setView({ name: "people" })} />;
+      return (
+        <Home
+          onPeople={() => setView({ name: "people" })}
+          onBriefing={() => setView({ name: "briefing" })}
+          onSettings={() => setView({ name: "settings" })}
+        />
+      );
     case "people":
       return (
         <People
@@ -42,6 +56,16 @@ function Gate() {
           onCancel={() => setView(view.id ? { name: "card", id: view.id } : { name: "people" })}
         />
       );
+    case "briefing":
+      return (
+        <Briefing
+          onBack={() => setView({ name: "home" })}
+          onSettings={() => setView({ name: "settings" })}
+          onOpenPerson={(id) => setView({ name: "card", id })}
+        />
+      );
+    case "settings":
+      return <Settings onBack={() => setView({ name: "home" })} />;
   }
 }
 

@@ -1,6 +1,14 @@
 import { useSession } from "../session";
 
-export function Home({ onPeople }: { onPeople: () => void }) {
+export function Home({
+  onPeople,
+  onBriefing,
+  onSettings,
+}: {
+  onPeople: () => void;
+  onBriefing: () => void;
+  onSettings: () => void;
+}) {
   const { vault, lock } = useSession();
 
   return (
@@ -42,6 +50,25 @@ export function Home({ onPeople }: { onPeople: () => void }) {
       >
         사람 목록 보기
       </button>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="button" onClick={onBriefing} style={secondaryBtnStyle}>
+          브리핑
+        </button>
+        <button type="button" onClick={onSettings} style={secondaryBtnStyle}>
+          설정
+        </button>
+      </div>
     </main>
   );
 }
+
+const secondaryBtnStyle: React.CSSProperties = {
+  flex: 1,
+  padding: "10px 16px",
+  borderRadius: "var(--radius)",
+  border: "1px solid var(--line)",
+  background: "var(--card)",
+  color: "var(--fg)",
+  fontSize: 14,
+};
