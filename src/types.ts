@@ -14,6 +14,17 @@ export interface Gift {
   at: number;
   repaid: boolean;
   repaidAt?: number;
+  /** 뭘로 갚았는지(선택). 체크 안 했어도 미리 적어둘 수 있다. */
+  repaidWith?: string;
+  updatedAt: number;
+}
+
+/** 생일 말고 직접 이름 붙여서 챙기는 기념일 (처음 만난 날, 결혼기념일 등). */
+export interface Anniversary {
+  id: string;
+  label: string;
+  /** "YYYY-MM-DD" — 몇 년 됐는지도 보여줄 수 있게 연도까지 저장(생일과 달리 나이 노출 걱정이 없음). */
+  date: string;
   updatedAt: number;
 }
 
@@ -28,6 +39,13 @@ export interface Person {
   notes: Note[];
   /** 이전 버전 데이터엔 없을 수 있어 optional — 읽을 땐 항상 `person.gifts ?? []`로 다뤄요. */
   gifts?: Gift[];
+  anniversaries?: Anniversary[];
+  /** 상대가 좋아하는 것 */
+  likes?: string[];
+  /** 상대가 싫어하는 것 */
+  dislikes?: string[];
+  /** 상대에게 받은 은혜·도움 */
+  favors?: string[];
   createdAt: number;
   updatedAt: number;
 }

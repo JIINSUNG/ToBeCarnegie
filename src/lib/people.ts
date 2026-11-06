@@ -1,13 +1,25 @@
 // Vault 안의 Person 배열을 다루는 순수 함수들. 전부 "새 Vault를 돌려주는" 불변 업데이트 방식이라
 // session.tsx의 update(fn)에 그대로 넘겨 쓸 수 있다.
 import { nanoid } from "nanoid";
-import type { Gift, Note, Person, Vault } from "../types";
+import type { Anniversary, Gift, Note, Person, Vault } from "../types";
 
 /** id를 안 넘기면 새로 만든다. session.tsx의 update(fn) 안에서 쓸 땐, fn이 두 번 호출돼도(React
  * StrictMode) 같은 사람이 만들어지도록 id를 밖에서 미리 만들어 넘기는 쪽을 권장한다. */
 export function createPerson(vault: Vault, name: string, id: string = nanoid()): Vault {
   const now = Date.now();
-  const person: Person = { id, name, tags: [], notes: [], gifts: [], createdAt: now, updatedAt: now };
+  const person: Person = {
+    id,
+    name,
+    tags: [],
+    notes: [],
+    gifts: [],
+    anniversaries: [],
+    likes: [],
+    dislikes: [],
+    favors: [],
+    createdAt: now,
+    updatedAt: now,
+  };
   return { ...vault, people: [...vault.people, person] };
 }
 
@@ -90,6 +102,62 @@ export function deleteGift(vault: Vault, personId: string, giftId: string): Vaul
   };
 }
 
+export function setGiftRepaidWith(vault: Vault, personId: string, giftId: string, repaidWith: string): Vault {
+  const now = Date.now();
+  return {
+    ...vault,
+    people: vault.people.map((p) =>
+      p.id === personId
+        ? { ...p, gifts: (p.gifts ?? []).map((g) => (g.id === giftId ? { ...g, repaidWith, updatedAt: now } : g)), updatedAt: now }
+        : p
+    ),
+  };
+}
+
+export function addAnniversary(vault: Vault, personId: string, label: string, date: string): Vault {
+  const now = Date.now();
+  const anniversary: Anniversary = { id: nanoid(), label, date, updatedAt: now };
+  return {
+    ...vault,
+    people: vault.people.map((p) => (p.id === personId ? { ...p, anniversaries: [...(p.anniversaries ?? []), anniversary], updatedAt: now } : p)),
+  };
+}
+
+export function deleteAnniversary(vault: Vault, personId: string, anniversaryId: string): Vault {
+  return {
+    ...vault,
+    people: vault.people.map((p) =>
+      p.id === personId ? { ...p, anniversaries: (p.anniversaries ?? []).filter((a) => a.id !== anniversaryId), updatedAt: Date.now() } : p
+    ),
+  };
+}
+
+type ListField = "likes" | "dislikes" | "favors";
+
+function addToList(vault: Vault, personId: string, field: ListField, text: string): Vault {
+  const now = Date.now();
+  return {
+    ...vault,
+    people: vault.people.map((p) => (p.id === personId ? { ...p, [field]: [...(p[field] ?? []), text], updatedAt: now } : p)),
+  };
+}
+
+function removeFromList(vault: Vault, personId: string, field: ListField, index: number): Vault {
+  return {
+    ...vault,
+    people: vault.people.map((p) =>
+      p.id === personId ? { ...p, [field]: (p[field] ?? []).filter((_, i) => i !== index), updatedAt: Date.now() } : p
+    ),
+  };
+}
+
+export const addLike = (vault: Vault, personId: string, text: string) => addToList(vault, personId, "likes", text);
+export const removeLike = (vault: Vault, personId: string, index: number) => removeFromList(vault, personId, "likes", index);
+export const addDislike = (vault: Vault, personId: string, text: string) => addToList(vault, personId, "dislikes", text);
+export const removeDislike = (vault: Vault, personId: string, index: number) => removeFromList(vault, personId, "dislikes", index);
+export const addFavor = (vault: Vault, personId: string, text: string) => addToList(vault, personId, "favors", text);
+export const removeFavor = (vault: Vault, personId: string, index: number) => removeFromList(vault, personId, "favors", index);
+
 export function touchLastContact(vault: Vault, personId: string, at: number = Date.now()): Vault {
   return {
     ...vault,
@@ -120,5 +188,19 @@ export function isValidBirthday(value: string): boolean {
   const day = Number(m[2]);
   if (month < 1 || month > 12) return false;
   const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  return day >= 1 && day <= daysInMonth;
+}
+
+/** 기념일용 "YYYY-MM-DD" — 연도까지 포함한 실제 날짜인지 확인한다. */
+export function isValidAnniversaryDate(value: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m) return false;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (year < 1900 || year > 2200) return false;
+  if (month < 1 || month > 12) return false;
+  const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const daysInMonth = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
   return day >= 1 && day <= daysInMonth;
 }

@@ -1,15 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { emptyVault } from "../types";
 import {
+  addAnniversary,
+  addDislike,
+  addFavor,
   addGift,
+  addLike,
   addNote,
   createPerson,
+  deleteAnniversary,
   deleteGift,
   deleteNote,
   deletePerson,
   findPerson,
+  isValidAnniversaryDate,
   isValidBirthday,
+  removeDislike,
+  removeFavor,
+  removeLike,
   searchPeople,
+  setGiftRepaidWith,
   toggleGiftRepaid,
   touchLastContact,
   updateNote,
@@ -100,6 +110,55 @@ describe("people", () => {
     v = { ...v, people: v.people.map((p) => ({ ...p, gifts: undefined })) };
     v = addGift(v, id, "명절 선물 받음");
     expect(findPerson(v, id)?.gifts).toHaveLength(1);
+  });
+
+  it("setGiftRepaidWith는 repaidWith만 바꾼다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    v = addGift(v, id, "생일 선물로 향수 받음");
+    const giftId = findPerson(v, id)!.gifts![0].id;
+    v = setGiftRepaidWith(v, id, giftId, "커피 쿠폰으로 갚음");
+    expect(findPerson(v, id)?.gifts![0].repaidWith).toBe("커피 쿠폰으로 갚음");
+    expect(findPerson(v, id)?.gifts![0].repaid).toBe(false);
+  });
+
+  it("addAnniversary·deleteAnniversary가 그 사람의 anniversaries만 건드린다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    v = addAnniversary(v, id, "처음 만난 날", "2021-05-03");
+    expect(findPerson(v, id)?.anniversaries).toHaveLength(1);
+    expect(findPerson(v, id)?.anniversaries![0].label).toBe("처음 만난 날");
+
+    const annId = findPerson(v, id)!.anniversaries![0].id;
+    v = deleteAnniversary(v, id, annId);
+    expect(findPerson(v, id)?.anniversaries).toHaveLength(0);
+  });
+
+  it("addLike/removeLike, addDislike/removeDislike, addFavor/removeFavor가 각자 리스트만 건드린다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    v = addLike(v, id, "커피");
+    v = addDislike(v, id, "민트초코");
+    v = addFavor(v, id, "이사할 때 도와줌");
+    expect(findPerson(v, id)?.likes).toEqual(["커피"]);
+    expect(findPerson(v, id)?.dislikes).toEqual(["민트초코"]);
+    expect(findPerson(v, id)?.favors).toEqual(["이사할 때 도와줌"]);
+
+    v = removeLike(v, id, 0);
+    v = removeDislike(v, id, 0);
+    v = removeFavor(v, id, 0);
+    expect(findPerson(v, id)?.likes).toEqual([]);
+    expect(findPerson(v, id)?.dislikes).toEqual([]);
+    expect(findPerson(v, id)?.favors).toEqual([]);
+  });
+
+  it("isValidAnniversaryDate는 YYYY-MM-DD 형식과 실제 존재하는 날짜만 통과시킨다", () => {
+    expect(isValidAnniversaryDate("2021-05-03")).toBe(true);
+    expect(isValidAnniversaryDate("2020-02-29")).toBe(true);
+    expect(isValidAnniversaryDate("2021-02-29")).toBe(false);
+    expect(isValidAnniversaryDate("2021-13-01")).toBe(false);
+    expect(isValidAnniversaryDate("21-05-03")).toBe(false);
+    expect(isValidAnniversaryDate("")).toBe(false);
   });
 
   it("isValidBirthday는 MM-DD 형식과 실제 존재하는 날짜만 통과시킨다", () => {

@@ -1,6 +1,6 @@
-// Vault에서 파생되는 값들: 다가오는 생일, 관계 온도, 연락 뜸한 사람, 브리핑, 백업 알림.
+// Vault에서 파생되는 값들: 다가오는 생일·기념일, 관계 온도, 연락 뜸한 사람, 브리핑, 백업 알림.
 // 전부 순수 함수 — 현재 시각(now)을 인자로 받아 테스트 가능하게 한다.
-import type { Person, Vault } from "../types";
+import type { Anniversary, Person, Vault } from "../types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -9,28 +9,53 @@ export interface UpcomingBirthday {
   daysUntil: number;
 }
 
+/** (월, 일)이 매년 돌아올 때, 오늘(now) 기준 다음 occurrence 날짜와 며칠 남았는지. */
+function nextOccurrence(month: number, day: number, now: number): { date: Date; daysUntil: number } {
+  const today = new Date(now);
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let next = new Date(today.getFullYear(), month - 1, day);
+  next.setHours(0, 0, 0, 0);
+  if (next.getTime() < todayStart.getTime()) {
+    next = new Date(today.getFullYear() + 1, month - 1, day);
+  }
+  return { date: next, daysUntil: Math.round((next.getTime() - todayStart.getTime()) / DAY_MS) };
+}
+
 /** 오늘(now) 기준 withinDays일 안에 생일인 사람들을, 가까운 순서로. */
 export function upcomingBirthdays(vault: Vault, now: number = Date.now(), withinDays = 14): UpcomingBirthday[] {
-  const today = new Date(now);
   const result: UpcomingBirthday[] = [];
-
   for (const person of vault.people) {
     if (!person.birthday) continue;
     const [month, day] = person.birthday.split("-").map(Number);
+    const { daysUntil } = nextOccurrence(month, day, now);
+    if (daysUntil <= withinDays) result.push({ person, daysUntil });
+  }
+  return result.sort((a, b) => a.daysUntil - b.daysUntil);
+}
 
-    let next = new Date(today.getFullYear(), month - 1, day);
-    next.setHours(0, 0, 0, 0);
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    if (next.getTime() < todayStart.getTime()) {
-      next = new Date(today.getFullYear() + 1, month - 1, day);
-    }
+export interface UpcomingAnniversary {
+  person: Person;
+  anniversary: Anniversary;
+  daysUntil: number;
+  /** 처음 기록한 해로부터 몇 년째인지. */
+  years: number;
+}
 
-    const daysUntil = Math.round((next.getTime() - todayStart.getTime()) / DAY_MS);
-    if (daysUntil <= withinDays) {
-      result.push({ person, daysUntil });
+/** 오늘(now) 기준 withinDays일 안에 돌아오는 기념일들을, 가까운 순서로. 매년 반복된다고 본다. */
+export function upcomingAnniversaries(vault: Vault, now: number = Date.now(), withinDays = 14): UpcomingAnniversary[] {
+  const result: UpcomingAnniversary[] = [];
+  for (const person of vault.people) {
+    for (const anniversary of person.anniversaries ?? []) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(anniversary.date);
+      if (!m) continue;
+      const year = Number(m[1]);
+      const month = Number(m[2]);
+      const day = Number(m[3]);
+      const { date, daysUntil } = nextOccurrence(month, day, now);
+      if (daysUntil > withinDays) continue;
+      result.push({ person, anniversary, daysUntil, years: Math.max(0, date.getFullYear() - year) });
     }
   }
-
   return result.sort((a, b) => a.daysUntil - b.daysUntil);
 }
 
@@ -79,6 +104,7 @@ export function shouldRemindBackup(vault: Vault, now: number = Date.now(), thres
 
 export interface Briefing {
   upcomingBirthdays: UpcomingBirthday[];
+  upcomingAnniversaries: UpcomingAnniversary[];
   staleContacts: StaleContact[];
   shouldBackup: boolean;
 }
@@ -86,6 +112,7 @@ export interface Briefing {
 export function buildBriefing(vault: Vault, now: number = Date.now()): Briefing {
   return {
     upcomingBirthdays: upcomingBirthdays(vault, now),
+    upcomingAnniversaries: upcomingAnniversaries(vault, now),
     staleContacts: staleContacts(vault, now),
     shouldBackup: shouldRemindBackup(vault, now),
   };

@@ -15,7 +15,11 @@ export function Briefing({ onOpenPerson, onSettings, onBack }: { onOpenPerson: (
         <span style={{ width: 40 }} />
       </div>
 
-      {!briefing || (briefing.upcomingBirthdays.length === 0 && briefing.staleContacts.length === 0 && !briefing.shouldBackup) ? (
+      {!briefing ||
+      (briefing.upcomingBirthdays.length === 0 &&
+        briefing.upcomingAnniversaries.length === 0 &&
+        briefing.staleContacts.length === 0 &&
+        !briefing.shouldBackup) ? (
         <p style={{ color: "var(--muted)", fontSize: 14, textAlign: "center", marginTop: 40 }}>지금은 딱히 알려드릴 게 없어요.</p>
       ) : (
         <>
@@ -34,6 +38,21 @@ export function Briefing({ onOpenPerson, onSettings, onBack }: { onOpenPerson: (
               {briefing.upcomingBirthdays.map(({ person, daysUntil }) => (
                 <button key={person.id} type="button" onClick={() => onOpenPerson(person.id)} style={rowStyle}>
                   <span>{person.name}</span>
+                  <span style={{ color: "var(--muted)", fontSize: 12.5 }}>{daysUntil === 0 ? "오늘!" : `${daysUntil}일 후`}</span>
+                </button>
+              ))}
+            </section>
+          )}
+
+          {briefing.upcomingAnniversaries.length > 0 && (
+            <section style={sectionStyle}>
+              <h2 style={headingStyle}>다가오는 기념일</h2>
+              {briefing.upcomingAnniversaries.map(({ person, anniversary, daysUntil, years }) => (
+                <button key={anniversary.id} type="button" onClick={() => onOpenPerson(person.id)} style={rowStyle}>
+                  <span>
+                    {person.name} · {anniversary.label}
+                    {years > 0 && ` (${years}주년)`}
+                  </span>
                   <span style={{ color: "var(--muted)", fontSize: 12.5 }}>{daysUntil === 0 ? "오늘!" : `${daysUntil}일 후`}</span>
                 </button>
               ))}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyVault } from "../types";
-import { createPerson, updatePerson } from "./people";
-import { buildBriefing, relationshipTemp, shouldRemindBackup, staleContacts, upcomingBirthdays } from "./derive";
+import { addAnniversary, createPerson, updatePerson } from "./people";
+import { buildBriefing, relationshipTemp, shouldRemindBackup, staleContacts, upcomingAnniversaries, upcomingBirthdays } from "./derive";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = new Date(2026, 5, 15).getTime(); // 2026-06-15
@@ -26,6 +26,33 @@ describe("upcomingBirthdays", () => {
     v = updatePerson(v, v.people[0].id, { birthday: "06-01" });
     expect(upcomingBirthdays(v, NOW, 14)).toEqual([]);
     expect(upcomingBirthdays(v, NOW, 400)).toHaveLength(1);
+  });
+});
+
+describe("upcomingAnniversaries", () => {
+  it("withinDays 안의 기념일만, 가까운 순서로 돌려주고 몇 년째인지 계산한다", () => {
+    let v = createPerson(emptyVault(), "오늘기념일");
+    v = addAnniversary(v, v.people[0].id, "처음 만난 날", "2020-06-15");
+    v = createPerson(v, "5일후기념일");
+    v = addAnniversary(v, v.people[1].id, "결혼기념일", "2021-06-20");
+    v = createPerson(v, "먼기념일");
+    v = addAnniversary(v, v.people[2].id, "계약일", "2019-12-25");
+
+    const result = upcomingAnniversaries(v, NOW, 14);
+    expect(result.map((r) => r.person.name)).toEqual(["오늘기념일", "5일후기념일"]);
+    expect(result[0].daysUntil).toBe(0);
+    expect(result[0].years).toBe(6);
+    expect(result[1].daysUntil).toBe(5);
+    expect(result[1].years).toBe(5);
+  });
+
+  it("이미 지난 기념일은 내년으로 계산한다", () => {
+    let v = createPerson(emptyVault(), "지난기념일");
+    v = addAnniversary(v, v.people[0].id, "어떤 날", "2022-06-01");
+    expect(upcomingAnniversaries(v, NOW, 14)).toEqual([]);
+    const far = upcomingAnniversaries(v, NOW, 400);
+    expect(far).toHaveLength(1);
+    expect(far[0].years).toBe(5);
   });
 });
 
