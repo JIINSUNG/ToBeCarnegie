@@ -42,7 +42,7 @@ export function People({ onOpen, onAdd, onBack }: { onOpen: (id: string) => void
       </div>
 
       <input
-        placeholder="이름·태그·기록 내용 검색"
+        placeholder="이름·태그·기록·선물·좋아요 검색"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         style={{ padding: "11px 14px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--card)", fontSize: 15 }}

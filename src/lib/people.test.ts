@@ -85,6 +85,24 @@ describe("people", () => {
     expect(searchPeople(v, "").map((p) => p.name)).toEqual(["김민수", "이지은"]);
   });
 
+  it("searchPeople은 선물·기념일·좋아요/싫어요/은혜 내용으로도 찾는다", () => {
+    let v = createPerson(emptyVault(), "김민수");
+    v = createPerson(v, "이지은");
+    const [minsu, jieun] = v.people;
+
+    v = addGift(v, minsu.id, "생일 선물로 향수");
+    v = addAnniversary(v, jieun.id, "입사 기념일", "2020-03-02");
+    v = addLike(v, minsu.id, "커피");
+    v = addDislike(v, jieun.id, "민트초코");
+    v = addFavor(v, minsu.id, "이사할 때 도와줌");
+
+    expect(searchPeople(v, "향수").map((p) => p.name)).toEqual(["김민수"]);
+    expect(searchPeople(v, "입사").map((p) => p.name)).toEqual(["이지은"]);
+    expect(searchPeople(v, "커피").map((p) => p.name)).toEqual(["김민수"]);
+    expect(searchPeople(v, "민트초코").map((p) => p.name)).toEqual(["이지은"]);
+    expect(searchPeople(v, "도와줌").map((p) => p.name)).toEqual(["김민수"]);
+  });
+
   it("addGift·toggleGiftRepaid·deleteGift가 그 사람의 gifts만 건드린다", () => {
     let v = createPerson(emptyVault(), "민수");
     const id = v.people[0].id;

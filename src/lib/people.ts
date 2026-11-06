@@ -179,11 +179,17 @@ export function findPeopleByName(vault: Vault, name: string): Person[] {
 export function searchPeople(vault: Vault, query: string): Person[] {
   const q = query.trim().toLowerCase();
   if (!q) return vault.people;
+  const has = (t: string) => t.toLowerCase().includes(q);
   return vault.people.filter(
     (p) =>
-      p.name.toLowerCase().includes(q) ||
-      p.tags.some((t) => t.toLowerCase().includes(q)) ||
-      p.notes.some((n) => n.text.toLowerCase().includes(q))
+      has(p.name) ||
+      p.tags.some(has) ||
+      p.notes.some((n) => has(n.text)) ||
+      (p.gifts ?? []).some((g) => has(g.text) || has(g.repaidWith ?? "")) ||
+      (p.anniversaries ?? []).some((a) => has(a.label)) ||
+      (p.likes ?? []).some(has) ||
+      (p.dislikes ?? []).some(has) ||
+      (p.favors ?? []).some(has)
   );
 }
 

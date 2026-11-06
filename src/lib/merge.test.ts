@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyVault, type Vault } from "../types";
-import { addNote, createPerson, findPerson, updatePerson } from "./people";
+import { addFavor, addGift, addLike, addNote, createPerson, findPerson, updatePerson } from "./people";
 import { mergeVaults } from "./merge";
 
 function withPerson(vault: Vault, name: string, id: string): Vault {
@@ -38,6 +38,32 @@ describe("mergeVaults", () => {
     const texts = findPerson(merged, "p1")!.notes.map((n) => n.text).sort();
     expect(texts).toEqual(["로컬 기록", "원격 기록"]);
     expect(localNoteId).toBeTruthy();
+  });
+
+  it("선물도 노트처럼 id 단위로 합쳐진다 (둘 다 남음)", () => {
+    let local = withPerson(emptyVault(), "민수", "p1");
+    local = addGift(local, "p1", "로컬에서 받은 선물");
+
+    let incoming = withPerson(emptyVault(), "민수", "p1");
+    incoming = addGift(incoming, "p1", "원격에서 받은 선물");
+
+    const merged = mergeVaults(local, incoming);
+    const texts = findPerson(merged, "p1")!.gifts!.map((g) => g.text).sort();
+    expect(texts).toEqual(["로컬에서 받은 선물", "원격에서 받은 선물"]);
+  });
+
+  it("좋아요처럼 id 없는 목록은 중복만 빼고 합쳐진다 (한쪽만 남지 않음)", () => {
+    let local = withPerson(emptyVault(), "민수", "p1");
+    local = addLike(local, "p1", "커피");
+    local = addFavor(local, "p1", "이사 도와줌");
+
+    let incoming = withPerson(emptyVault(), "민수", "p1");
+    incoming = addLike(incoming, "p1", "영화");
+    incoming = { ...incoming, people: incoming.people.map((p) => ({ ...p, updatedAt: local.people[0].updatedAt + 1000 })) };
+
+    const merged = mergeVaults(local, incoming);
+    expect(findPerson(merged, "p1")?.likes?.sort()).toEqual(["영화", "커피"]);
+    expect(findPerson(merged, "p1")?.favors).toEqual(["이사 도와줌"]);
   });
 
   it("version과 lastBackupAt은 더 큰 쪽을 쓴다", () => {
