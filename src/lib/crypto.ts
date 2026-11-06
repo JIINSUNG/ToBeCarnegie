@@ -19,13 +19,13 @@ export function randomSalt(): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(SALT_BYTES));
 }
 
-function toBase64(bytes: Uint8Array): string {
+export function toBase64(bytes: Uint8Array): string {
   let binary = "";
   for (const b of bytes) binary += String.fromCharCode(b);
   return btoa(binary);
 }
 
-function fromBase64(b64: string): Uint8Array {
+export function fromBase64(b64: string): Uint8Array {
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -64,4 +64,33 @@ export function saltToBase64(salt: Uint8Array): string {
 
 export function saltFromBase64(b64: string): Uint8Array {
   return fromBase64(b64);
+}
+
+/** Vault를 실제로 암복호화하는 랜덤 마스터 키. 패스프레이즈·패스키 등 "잠금 해제 방법"은
+ * 전부 이 키를 감싸는(wrap) KEK일 뿐 — 잠금 방법을 늘려도 Vault를 다시 암호화할 필요가 없다. */
+export async function generateMasterKey(): Promise<CryptoKey> {
+  return crypto.subtle.generateKey({ name: "AES-GCM", length: AES_KEY_LENGTH }, true, ["encrypt", "decrypt"]);
+}
+
+export async function wrapKey(kek: CryptoKey, keyToWrap: CryptoKey): Promise<EncryptedBlob> {
+  const raw = await crypto.subtle.exportKey("raw", keyToWrap);
+  return encryptWithKey(kek, toBase64(new Uint8Array(raw)));
+}
+
+export async function unwrapKey(kek: CryptoKey, blob: EncryptedBlob): Promise<CryptoKey> {
+  const b64 = await decryptWithKey<string>(kek, blob);
+  const raw = fromBase64(b64);
+  return crypto.subtle.importKey("raw", raw as BufferSource, "AES-GCM", true, ["encrypt", "decrypt"]);
+}
+
+/** WebAuthn PRF 확장이 돌려준 비밀값을 AES-GCM KEK로 바꾼다 (HKDF). */
+export async function deriveKeyFromPrf(prfOutput: ArrayBuffer): Promise<CryptoKey> {
+  const baseKey = await crypto.subtle.importKey("raw", prfOutput, "HKDF", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: new TextEncoder().encode("관계노트-passkey-kek") },
+    baseKey,
+    { name: "AES-GCM", length: AES_KEY_LENGTH },
+    false,
+    ["encrypt", "decrypt"]
+  );
 }

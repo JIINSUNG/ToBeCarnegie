@@ -4,12 +4,19 @@ import { useSession } from "../session";
 const MIN_LENGTH = 8;
 
 export function Lock() {
-  const { status, error, setup, unlock } = useSession();
+  const { status, error, hasPasskey, setup, unlock, unlockPasskey } = useSession();
   const isSetup = status === "needs-setup";
   const [pass, setPass] = useState("");
   const [confirm, setConfirm] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const submitPasskey = async () => {
+    setLocalError(null);
+    setBusy(true);
+    await unlockPasskey();
+    setBusy(false);
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -73,6 +80,12 @@ export function Lock() {
         </button>
       </form>
 
+      {!isSetup && hasPasskey && (
+        <button type="button" onClick={submitPasskey} disabled={busy} style={passkeyButtonStyle}>
+          패스키로 잠금 해제
+        </button>
+      )}
+
       {isSetup && (
         <p style={{ color: "var(--muted)", fontSize: 12.5, textAlign: "center", margin: 0 }}>
           이 암호를 잊으면 기록을 되돌릴 방법이 없어요. 꼭 기억할 수 있는 걸로 만들어주세요.
@@ -98,4 +111,13 @@ const buttonStyle: React.CSSProperties = {
   color: "var(--accent-fg)",
   fontSize: 16,
   fontWeight: 600,
+};
+
+const passkeyButtonStyle: React.CSSProperties = {
+  padding: "12px 14px",
+  borderRadius: "var(--radius)",
+  border: "1px solid var(--line)",
+  background: "var(--card)",
+  color: "var(--fg)",
+  fontSize: 15,
 };

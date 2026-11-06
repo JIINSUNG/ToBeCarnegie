@@ -13,11 +13,10 @@ import { emptyVault, type Vault } from "../types";
 import { createPerson } from "./people";
 
 const sampleStored: StoredVault = {
-  salt: "c2FsdA==",
   iv: "aXY=",
   cipher: "Y2lwaGVy",
-  iterations: 310_000,
   updatedAt: 1000,
+  passphrase: { salt: "c2FsdA==", iterations: 310_000, iv: "a3dpdg==", cipher: "a3djaXBoZXI=" },
 };
 
 describe("backup file round-trip", () => {
