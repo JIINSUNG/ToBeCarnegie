@@ -7,14 +7,12 @@ import { getAuth, signInAnonymously, type Auth } from "firebase/auth";
 import { doc, getDoc, getFirestore, onSnapshot, setDoc, type Firestore, type Unsubscribe } from "firebase/firestore";
 import type { StoredVault } from "./storage";
 
+export { isSyncConfigured } from "./sync-env";
+
 const VAULTS_COLLECTION = "vaults";
 
 function readEnv(key: string): string | undefined {
   return (import.meta.env as Record<string, string | undefined>)[key];
-}
-
-export function isSyncConfigured(): boolean {
-  return !!(readEnv("VITE_FIREBASE_API_KEY") && readEnv("VITE_FIREBASE_PROJECT_ID"));
 }
 
 let app: FirebaseApp | null = null;

@@ -27,8 +27,12 @@ import {
 import { registerPasskey as registerPasskeyCredential, unlockWithPasskey } from "./lib/passkey";
 import { createBackupFile, restoreMerge, restoreOverwrite, type BackupFile } from "./lib/backup";
 import { mergeVaults } from "./lib/merge";
-import { isSyncConfigured, pullStoredVault, pushStoredVault, signInOwner } from "./lib/sync";
+import { isSyncConfigured } from "./lib/sync-env";
 import { emptyVault, type Vault } from "./types";
+
+// lib/sync.ts는 Firebase SDK 전체를 끌어오므로, 동기화를 실제로 쓸 때만 동적으로 불러온다
+// (.env.local 없이 쓰는 대다수 사용자의 번들에 Firebase 코드가 섞여 들어가지 않게).
+const loadSync = () => import("./lib/sync");
 
 type Status = "loading" | "needs-setup" | "locked" | "unlocked";
 
@@ -135,6 +139,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const joinFromCloud = useCallback(
     async (passphrase: string): Promise<boolean> => {
       try {
+        const { signInOwner, pullStoredVault } = await loadSync();
         const uid = await signInOwner();
         const remote = await pullStoredVault(uid);
         if (!remote) {
@@ -221,15 +226,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   const removePasskey = useCallback(() => {
-    if (!masterKey || !vault) return;
-    setWraps((prev) => {
-      if (!prev) return prev;
-      const next: Wraps = { passphrase: prev.passphrase };
-      void persist(vault, masterKey, next);
-      return next;
-    });
+    if (!masterKey || !vault || !wraps) return;
+    const next: Wraps = { passphrase: wraps.passphrase };
+    setWraps(next);
     setHasPasskey(false);
-  }, [masterKey, vault, persist]);
+    void persist(vault, masterKey, next);
+  }, [masterKey, vault, wraps, persist]);
 
   const exportBackup = useCallback(async (): Promise<BackupFile | null> => {
     if (!vault || !masterKey || !wraps) return null;
@@ -262,6 +264,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const syncNow = useCallback(async (): Promise<boolean> => {
     if (!vault || !masterKey || !wraps) return false;
     try {
+      const { signInOwner, pullStoredVault, pushStoredVault } = await loadSync();
       const uid = await signInOwner();
       const remoteStored = await pullStoredVault(uid);
       let finalVault = vault;
