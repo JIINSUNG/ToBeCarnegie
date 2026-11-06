@@ -131,7 +131,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
         {code && (
           <label style={fieldStyle}>
             <span>또는 코드로 복사해서 옮기기</span>
-            <textarea readOnly rows={3} value={code} style={{ ...inputStyle, fontSize: 11, fontFamily: "monospace" }} onFocus={(e) => e.currentTarget.select()} />
+            <textarea readOnly rows={3} value={code} style={{ ...inputStyle, fontSize: 16, fontFamily: "monospace" }} onFocus={(e) => e.currentTarget.select()} />
           </label>
         )}
       </section>
@@ -174,7 +174,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
             value={pasteCode}
             onChange={(e) => setPasteCode(e.target.value)}
             placeholder="백업 코드를 붙여넣으세요"
-            style={{ ...inputStyle, fontSize: 12, fontFamily: "monospace" }}
+            style={{ ...inputStyle, fontSize: 16, fontFamily: "monospace" }}
           />
           <button type="button" onClick={handlePasteCode} disabled={!pasteCode.trim()} style={secondaryBtnStyle}>
             코드 읽기

@@ -27,7 +27,7 @@ export function createPerson(vault: Vault, name: string, id: string = nanoid()):
 export function updatePerson(
   vault: Vault,
   id: string,
-  patch: Partial<Pick<Person, "name" | "birthday" | "tags" | "lastContactAt">>
+  patch: Partial<Pick<Person, "name" | "birthday" | "tags" | "lastContactAt" | "mbti" | "groups">>
 ): Vault {
   return {
     ...vault,
@@ -184,6 +184,15 @@ export function touchLastContact(vault: Vault, personId: string, at: number = Da
   };
 }
 
+/** "오늘 연락했어요"를 잘못 눌렀을 때 되돌리는 용도 — lastContactAt을 지정한 값(없으면 아예 기록
+ * 없음)으로 되돌린다. */
+export function setLastContact(vault: Vault, personId: string, at: number | undefined): Vault {
+  return {
+    ...vault,
+    people: vault.people.map((p) => (p.id === personId ? { ...p, lastContactAt: at, updatedAt: Date.now() } : p)),
+  };
+}
+
 export function findPerson(vault: Vault, id: string): Person | undefined {
   return vault.people.find((p) => p.id === id);
 }
@@ -209,8 +218,31 @@ export function searchPeople(vault: Vault, query: string): Person[] {
       (p.likes ?? []).some(has) ||
       (p.dislikes ?? []).some(has) ||
       (p.favors ?? []).some(has) ||
-      (p.intentions ?? []).some((i) => has(i.text))
+      (p.intentions ?? []).some((i) => has(i.text)) ||
+      has(p.mbti ?? "") ||
+      (p.groups ?? []).some(has)
   );
+}
+
+const MBTI_LETTERS: [string, string][] = [
+  ["E", "I"],
+  ["S", "N"],
+  ["T", "F"],
+  ["J", "P"],
+];
+
+/** 4글자 MBTI인지(대소문자 무시, 각 자리 둘 중 하나). */
+export function isValidMbti(value: string): boolean {
+  const v = value.trim().toUpperCase();
+  if (v.length !== 4) return false;
+  return MBTI_LETTERS.every(([a, b], i) => v[i] === a || v[i] === b);
+}
+
+/** 지금까지 사람들에게 쓰인 그룹 이름 전부(중복 없이) — PersonEdit에서 고를 때, People에서 필터할 때 쓴다. */
+export function allGroups(vault: Vault): string[] {
+  const set = new Set<string>();
+  for (const p of vault.people) for (const g of p.groups ?? []) set.add(g);
+  return [...set].sort();
 }
 
 /** "MM-DD" 형식만 허용 — 유효한 달·일인지도 확인한다. */

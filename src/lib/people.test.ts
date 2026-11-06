@@ -8,6 +8,7 @@ import {
   addIntention,
   addLike,
   addNote,
+  allGroups,
   createPerson,
   deleteAnniversary,
   deleteGift,
@@ -18,11 +19,13 @@ import {
   findPerson,
   isValidAnniversaryDate,
   isValidBirthday,
+  isValidMbti,
   removeDislike,
   removeFavor,
   removeLike,
   searchPeople,
   setGiftRepaidWith,
+  setLastContact,
   toggleGiftRepaid,
   touchLastContact,
   updateNote,
@@ -73,6 +76,16 @@ describe("people", () => {
     const id = v.people[0].id;
     v = touchLastContact(v, id, 123456);
     expect(findPerson(v, id)?.lastContactAt).toBe(123456);
+  });
+
+  it("setLastContact은 지정한 값으로(undefined면 기록 없음으로) 되돌릴 수 있다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    v = touchLastContact(v, id, 123456);
+    v = setLastContact(v, id, 99999);
+    expect(findPerson(v, id)?.lastContactAt).toBe(99999);
+    v = setLastContact(v, id, undefined);
+    expect(findPerson(v, id)?.lastContactAt).toBeUndefined();
   });
 
   it("searchPeople은 이름·태그·기록 내용으로 찾는다", () => {
@@ -214,5 +227,31 @@ describe("people", () => {
     expect(isValidBirthday("02-30")).toBe(false);
     expect(isValidBirthday("3-15")).toBe(false);
     expect(isValidBirthday("")).toBe(false);
+  });
+
+  it("isValidMbti는 4글자이고 각 자리가 정해진 두 글자 중 하나일 때만 통과시킨다", () => {
+    expect(isValidMbti("INTJ")).toBe(true);
+    expect(isValidMbti("intj")).toBe(true);
+    expect(isValidMbti("ESFP")).toBe(true);
+    expect(isValidMbti("INTX")).toBe(false);
+    expect(isValidMbti("INT")).toBe(false);
+    expect(isValidMbti("INTJE")).toBe(false);
+    expect(isValidMbti("")).toBe(false);
+  });
+
+  it("updatePerson으로 mbti·groups를 바꿀 수 있다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    v = updatePerson(v, id, { mbti: "INTJ", groups: ["대학동기", "헬스장"] });
+    expect(findPerson(v, id)?.mbti).toBe("INTJ");
+    expect(findPerson(v, id)?.groups).toEqual(["대학동기", "헬스장"]);
+  });
+
+  it("allGroups는 모든 사람의 그룹을 중복 없이 모은다", () => {
+    let v = createPerson(emptyVault(), "김민수");
+    v = createPerson(v, "이지은");
+    v = updatePerson(v, v.people[0].id, { groups: ["대학동기", "헬스장"] });
+    v = updatePerson(v, v.people[1].id, { groups: ["헬스장", "회사"] });
+    expect(allGroups(v)).toEqual(["대학동기", "헬스장", "회사"]);
   });
 });

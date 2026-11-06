@@ -19,6 +19,7 @@ import {
   removeFavor,
   removeLike,
   setGiftRepaidWith,
+  setLastContact,
   toggleGiftRepaid,
   touchLastContact,
 } from "../lib/people";
@@ -227,6 +228,7 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
   const [error, setError] = useState<string | null>(null);
   const [giftDraft, setGiftDraft] = useState("");
   const [giftError, setGiftError] = useState<string | null>(null);
+  const [prevContactAt, setPrevContactAt] = useState<number | undefined | null>(null);
   const person = vault ? findPerson(vault, id) : undefined;
 
   if (!person) {
@@ -305,12 +307,22 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
           {person.name.slice(0, 1)}
         </div>
         <div style={{ flex: 1 }}>
-          <h1 style={{ fontSize: 22, margin: 0 }}>{person.name}</h1>
+          <h1 style={{ fontSize: 22, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            {person.name}
+            {person.mbti && (
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent)", background: "var(--field)", borderRadius: 999, padding: "2px 8px" }}>
+                {person.mbti}
+              </span>
+            )}
+          </h1>
           <p style={{ color: "var(--muted)", fontSize: 13, margin: "4px 0 0" }}>
             {person.birthday && `생일 ${person.birthday}`}
             {person.birthday && person.tags.length > 0 && " · "}
             {person.tags.join(" · ")}
           </p>
+          {(person.groups ?? []).length > 0 && (
+            <p style={{ color: "var(--muted)", fontSize: 12.5, margin: "4px 0 0" }}>👥 {(person.groups ?? []).join(" · ")}</p>
+          )}
           <p style={{ color: "var(--muted)", fontSize: 12.5, margin: "4px 0 0" }}>
             {RELATIONSHIP_TEMP_LABEL[temp]}
             {person.lastContactAt && ` · ${formatDate(person.lastContactAt)}`}
@@ -318,13 +330,30 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => update((v) => touchLastContact(v, id))}
-        style={{ alignSelf: "flex-start", padding: "7px 14px", borderRadius: 999, border: "1px solid var(--line)", background: "var(--field)", fontSize: 12.5 }}
-      >
-        오늘 연락했어요
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button
+          type="button"
+          onClick={() => {
+            setPrevContactAt(person.lastContactAt ?? undefined);
+            update((v) => touchLastContact(v, id));
+          }}
+          style={{ alignSelf: "flex-start", padding: "7px 14px", borderRadius: 999, border: "1px solid var(--line)", background: "var(--field)", fontSize: 12.5 }}
+        >
+          오늘 연락했어요
+        </button>
+        {prevContactAt !== null && (
+          <button
+            type="button"
+            onClick={() => {
+              update((v) => setLastContact(v, id, prevContactAt));
+              setPrevContactAt(null);
+            }}
+            style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 12.5 }}
+          >
+            취소
+          </button>
+        )}
+      </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: 14, borderRadius: 16, background: "var(--accent)" }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent-fg)", opacity: 0.85 }}>{person.name}에게 어울리는 말</span>
@@ -464,7 +493,7 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
                       update((v) => setGiftRepaidWith(v, id, g.id, e.target.value));
                     }
                   }}
-                  style={{ ...inputStyle, fontSize: 13, padding: "8px 10px" }}
+                  style={{ ...inputStyle, padding: "8px 10px" }}
                 />
               </div>
             ))
@@ -497,7 +526,8 @@ const sectionStyle: React.CSSProperties = {
   boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
 };
 const headingStyle: React.CSSProperties = { fontSize: 14, margin: 0, color: "var(--fg2)" };
-const inputStyle: React.CSSProperties = { padding: "10px 12px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--field)", color: "var(--fg)", fontSize: 14 };
+// 16px 미만이면 iOS Safari가 포커스 시 자동으로 확대해버려서(그리고 잘 안 풀림) 16으로 고정.
+const inputStyle: React.CSSProperties = { padding: "10px 12px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--field)", color: "var(--fg)", fontSize: 16 };
 const smallAddBtnStyle: React.CSSProperties = { padding: "0 14px", borderRadius: "var(--radius)", border: "none", background: "var(--accent)", color: "var(--accent-fg)", fontSize: 13.5, fontWeight: 600 };
 const chipStyle: React.CSSProperties = { fontSize: 12.5, color: "var(--fg2)", background: "var(--field)", border: "1px solid var(--line)", borderRadius: 999, padding: "4px 10px" };
 const rowStyle: React.CSSProperties = { padding: "10px 12px", borderRadius: "var(--radius)", background: "var(--field)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 };

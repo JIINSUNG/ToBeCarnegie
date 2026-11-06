@@ -5,6 +5,9 @@ import { addNote, createPerson, findPeopleByName } from "../lib/people";
 import { parseQuickEntry } from "../lib/parser";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
 import { pickRandomWisdom } from "../lib/wisdom";
+import { upcomingAnniversaries, upcomingBirthdays } from "../lib/derive";
+
+const SOON_WINDOW_DAYS = 7;
 
 export function Home({
   onPeople,
@@ -21,6 +24,13 @@ export function Home({
   const [quick, setQuick] = useState("");
   const [quickMsg, setQuickMsg] = useState<{ type: "ok" | "error"; text: string; personId?: string } | null>(null);
   const [wisdom, setWisdom] = useState(() => pickRandomWisdom());
+
+  const soonBirthdays = vault ? upcomingBirthdays(vault, undefined, SOON_WINDOW_DAYS) : [];
+  const soonAnniversaries = vault ? upcomingAnniversaries(vault, undefined, SOON_WINDOW_DAYS) : [];
+  const soonItems = [
+    ...soonBirthdays.map((b) => ({ personId: b.person.id, daysUntil: b.daysUntil, label: `${b.person.name} 생일` })),
+    ...soonAnniversaries.map((a) => ({ personId: a.person.id, daysUntil: a.daysUntil, label: `${a.person.name} · ${a.anniversary.label}` })),
+  ].sort((x, y) => x.daysUntil - y.daysUntil);
 
   const submitQuick = () => {
     const parsed = parseQuickEntry(quick);
@@ -78,6 +88,18 @@ export function Home({
         </button>
       </div>
 
+      {soonItems.length > 0 && (
+        <div style={soonBoxStyle}>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--fg2)" }}>🎉 다가오는 날</span>
+          {soonItems.map((it) => (
+            <button key={it.personId + it.label} type="button" onClick={() => onOpenPerson(it.personId)} style={soonRowStyle}>
+              <span>{it.label}</span>
+              <span style={{ color: "var(--accent)", fontWeight: 600 }}>{it.daysUntil === 0 ? "오늘!" : `D-${it.daysUntil}`}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {vault && vault.people.length === 0 ? (
         <p style={{ color: "var(--muted)", fontSize: 14, textAlign: "center", marginTop: "10vh" }}>
           아직 적어둔 사람이 없어요.
@@ -99,7 +121,7 @@ export function Home({
               setQuickMsg(null);
             }}
             onKeyDown={(e) => e.key === "Enter" && submitQuick()}
-            style={{ flex: 1, padding: "10px 12px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--field)", fontSize: 14 }}
+            style={{ flex: 1, padding: "10px 12px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--field)", fontSize: 16 }}
           />
           <button type="button" onClick={submitQuick} disabled={!quick.trim()} style={quickBtnStyle}>
             기록
@@ -152,6 +174,28 @@ const wisdomBoxStyle: React.CSSProperties = {
   padding: 16,
   borderRadius: 16,
   background: "var(--accent)",
+};
+
+const soonBoxStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  padding: 14,
+  borderRadius: 16,
+  border: "1px solid var(--line)",
+  background: "var(--card)",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+};
+
+const soonRowStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "8px 10px",
+  borderRadius: 10,
+  background: "var(--field)",
+  fontSize: 13.5,
+  textAlign: "left",
 };
 
 const quickBoxStyle: React.CSSProperties = {

@@ -41,7 +41,11 @@ export interface Person {
   name: string;
   /** "MM-DD" 형식만 저장 — 생년(나이)까지는 안 남긴다. */
   birthday?: string;
+  /** "INTJ" 같은 4글자 MBTI (대문자). */
+  mbti?: string;
   tags: string[];
+  /** 태그와 별개로, 사람을 묶어서 관리하는 그룹(가족/직장 등). 자유 목록, PersonEdit에서 고른다. */
+  groups?: string[];
   /** 마지막으로 연락·만남한 시각(사용자가 직접 갱신). */
   lastContactAt?: number;
   notes: Note[];

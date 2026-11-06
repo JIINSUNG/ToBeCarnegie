@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSession } from "../session";
-import { searchPeople } from "../lib/people";
+import { allGroups, searchPeople } from "../lib/people";
 import { relationshipTemp, upcomingBirthdays, type RelationshipTemp } from "../lib/derive";
 import type { Person } from "../types";
 
@@ -26,8 +26,11 @@ function statusLine(person: Person): string {
 export function People({ onOpen, onAdd, onBack }: { onOpen: (id: string) => void; onAdd: () => void; onBack: () => void }) {
   const { vault } = useSession();
   const [q, setQ] = useState("");
-  const list = vault ? searchPeople(vault, q) : [];
+  const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const searched = vault ? searchPeople(vault, q) : [];
+  const list = groupFilter ? searched.filter((p) => (p.groups ?? []).includes(groupFilter)) : searched;
   const birthdaySoon = new Map((vault ? upcomingBirthdays(vault) : []).map((b) => [b.person.id, b.daysUntil]));
+  const groups = vault ? allGroups(vault) : [];
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 16 }}>
@@ -45,12 +48,36 @@ export function People({ onOpen, onAdd, onBack }: { onOpen: (id: string) => void
         placeholder="이름·태그·기록·선물·좋아요 검색"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        style={{ padding: "11px 14px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--card)", fontSize: 15 }}
+        style={{ padding: "11px 14px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--card)", fontSize: 16 }}
       />
+
+      {groups.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {groups.map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGroupFilter(groupFilter === g ? null : g)}
+              aria-pressed={groupFilter === g}
+              style={{
+                fontSize: 12.5,
+                fontWeight: 600,
+                padding: "5px 11px",
+                borderRadius: 999,
+                border: "1px solid var(--line)",
+                background: groupFilter === g ? "var(--accent)" : "var(--card)",
+                color: groupFilter === g ? "var(--accent-fg)" : "var(--fg2)",
+              }}
+            >
+              👥 {g}
+            </button>
+          ))}
+        </div>
+      )}
 
       {list.length === 0 && (
         <p style={{ color: "var(--muted)", fontSize: 14, textAlign: "center", marginTop: 40 }}>
-          {q ? "찾는 사람이 없어요." : "아직 적어둔 사람이 없어요."}
+          {groupFilter ? "이 그룹엔 아직 사람이 없어요." : q ? "찾는 사람이 없어요." : "아직 적어둔 사람이 없어요."}
         </p>
       )}
 
