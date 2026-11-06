@@ -1,7 +1,7 @@
 // Vault 안의 Person 배열을 다루는 순수 함수들. 전부 "새 Vault를 돌려주는" 불변 업데이트 방식이라
 // session.tsx의 update(fn)에 그대로 넘겨 쓸 수 있다.
 import { nanoid } from "nanoid";
-import type { Anniversary, Gift, Note, Person, Vault } from "../types";
+import type { Anniversary, Gift, Intention, Note, Person, Vault } from "../types";
 
 /** id를 안 넘기면 새로 만든다. session.tsx의 update(fn) 안에서 쓸 땐, fn이 두 번 호출돼도(React
  * StrictMode) 같은 사람이 만들어지도록 id를 밖에서 미리 만들어 넘기는 쪽을 권장한다. */
@@ -17,6 +17,7 @@ export function createPerson(vault: Vault, name: string, id: string = nanoid()):
     likes: [],
     dislikes: [],
     favors: [],
+    intentions: [],
     createdAt: now,
     updatedAt: now,
   };
@@ -132,6 +133,24 @@ export function deleteAnniversary(vault: Vault, personId: string, anniversaryId:
   };
 }
 
+export function addIntention(vault: Vault, personId: string, text: string): Vault {
+  const now = Date.now();
+  const intention: Intention = { id: nanoid(), text, at: now, updatedAt: now };
+  return {
+    ...vault,
+    people: vault.people.map((p) => (p.id === personId ? { ...p, intentions: [...(p.intentions ?? []), intention], updatedAt: now } : p)),
+  };
+}
+
+export function deleteIntention(vault: Vault, personId: string, intentionId: string): Vault {
+  return {
+    ...vault,
+    people: vault.people.map((p) =>
+      p.id === personId ? { ...p, intentions: (p.intentions ?? []).filter((i) => i.id !== intentionId), updatedAt: Date.now() } : p
+    ),
+  };
+}
+
 type ListField = "likes" | "dislikes" | "favors";
 
 function addToList(vault: Vault, personId: string, field: ListField, text: string): Vault {
@@ -189,7 +208,8 @@ export function searchPeople(vault: Vault, query: string): Person[] {
       (p.anniversaries ?? []).some((a) => has(a.label)) ||
       (p.likes ?? []).some(has) ||
       (p.dislikes ?? []).some(has) ||
-      (p.favors ?? []).some(has)
+      (p.favors ?? []).some(has) ||
+      (p.intentions ?? []).some((i) => has(i.text))
   );
 }
 

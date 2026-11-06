@@ -4,6 +4,7 @@ import { useSession } from "../session";
 import { addNote, createPerson, findPeopleByName } from "../lib/people";
 import { parseQuickEntry } from "../lib/parser";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
+import { pickRandomWisdom } from "../lib/wisdom";
 
 export function Home({
   onPeople,
@@ -19,6 +20,7 @@ export function Home({
   const { vault, lock, update } = useSession();
   const [quick, setQuick] = useState("");
   const [quickMsg, setQuickMsg] = useState<{ type: "ok" | "error"; text: string; personId?: string } | null>(null);
+  const [wisdom, setWisdom] = useState(() => pickRandomWisdom());
 
   const submitQuick = () => {
     const parsed = parseQuickEntry(quick);
@@ -61,6 +63,18 @@ export function Home({
           style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13.5 }}
         >
           잠그기
+        </button>
+      </div>
+
+      <div style={wisdomBoxStyle}>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--accent-fg)", opacity: 0.85 }}>오늘의 한마디</span>
+        <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5, color: "var(--accent-fg)" }}>{wisdom.text}</p>
+        <button
+          type="button"
+          onClick={() => setWisdom(pickRandomWisdom(wisdom.id))}
+          style={{ alignSelf: "flex-end", background: "none", border: "none", color: "var(--accent-fg)", opacity: 0.85, fontSize: 12.5, padding: 0 }}
+        >
+          다른 문구 →
         </button>
       </div>
 
@@ -130,6 +144,15 @@ export function Home({
     </main>
   );
 }
+
+const wisdomBoxStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  padding: 16,
+  borderRadius: 16,
+  background: "var(--accent)",
+};
 
 const quickBoxStyle: React.CSSProperties = {
   display: "flex",

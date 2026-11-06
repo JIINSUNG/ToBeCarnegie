@@ -2,7 +2,7 @@
 // 백업 복원(합치기)과 2단계 Firebase 동기화가 공용으로 쓴다.
 // id가 있는 항목(notes/gifts/anniversaries)은 id 기준으로, id가 없는 단순 목록(likes 등)은
 // 합집합으로 합친다 — 두 기기에서 각자 추가한 내용이 한쪽만 "더 최신"이라고 통째로 사라지지 않게.
-import type { Anniversary, Gift, Note, Person, Vault } from "../types";
+import type { Anniversary, Gift, Intention, Note, Person, Vault } from "../types";
 
 function mergeById<T extends { id: string; updatedAt: number }>(a: T[], b: T[]): T[] {
   const byId = new Map<string, T>();
@@ -26,6 +26,10 @@ function mergeAnniversaries(a: Anniversary[], b: Anniversary[]): Anniversary[] {
   return mergeById(a, b).sort((x, y) => x.date.localeCompare(y.date));
 }
 
+function mergeIntentions(a: Intention[], b: Intention[]): Intention[] {
+  return mergeById(a, b).sort((x, y) => x.at - y.at);
+}
+
 /** id가 없는 단순 문자열 목록(좋아요/싫어요/은혜)은 중복만 빼고 합친다. */
 function mergeStringList(a: string[] = [], b: string[] = []): string[] {
   const seen = new Set<string>();
@@ -46,6 +50,7 @@ function mergePerson(a: Person, b: Person): Person {
     notes: mergeNotes(a.notes, b.notes),
     gifts: mergeGifts(a.gifts ?? [], b.gifts ?? []),
     anniversaries: mergeAnniversaries(a.anniversaries ?? [], b.anniversaries ?? []),
+    intentions: mergeIntentions(a.intentions ?? [], b.intentions ?? []),
     likes: mergeStringList(a.likes, b.likes),
     dislikes: mergeStringList(a.dislikes, b.dislikes),
     favors: mergeStringList(a.favors, b.favors),

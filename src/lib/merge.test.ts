@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyVault, type Vault } from "../types";
-import { addFavor, addGift, addLike, addNote, createPerson, findPerson, updatePerson } from "./people";
+import { addFavor, addGift, addIntention, addLike, addNote, createPerson, findPerson, updatePerson } from "./people";
 import { mergeVaults } from "./merge";
 
 function withPerson(vault: Vault, name: string, id: string): Vault {
@@ -64,6 +64,18 @@ describe("mergeVaults", () => {
     const merged = mergeVaults(local, incoming);
     expect(findPerson(merged, "p1")?.likes?.sort()).toEqual(["영화", "커피"]);
     expect(findPerson(merged, "p1")?.favors).toEqual(["이사 도와줌"]);
+  });
+
+  it("다짐도 노트처럼 id 단위로 합쳐진다 (둘 다 남음)", () => {
+    let local = withPerson(emptyVault(), "민수", "p1");
+    local = addIntention(local, "p1", "로컬에서 쓴 다짐");
+
+    let incoming = withPerson(emptyVault(), "민수", "p1");
+    incoming = addIntention(incoming, "p1", "원격에서 쓴 다짐");
+
+    const merged = mergeVaults(local, incoming);
+    const texts = findPerson(merged, "p1")!.intentions!.map((i) => i.text).sort();
+    expect(texts).toEqual(["로컬에서 쓴 다짐", "원격에서 쓴 다짐"]);
   });
 
   it("version과 lastBackupAt은 더 큰 쪽을 쓴다", () => {

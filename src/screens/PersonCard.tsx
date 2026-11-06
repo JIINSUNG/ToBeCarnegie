@@ -5,10 +5,12 @@ import {
   addDislike,
   addFavor,
   addGift,
+  addIntention,
   addLike,
   addNote,
   deleteAnniversary,
   deleteGift,
+  deleteIntention,
   deleteNote,
   deletePerson,
   findPerson,
@@ -21,6 +23,7 @@ import {
   touchLastContact,
 } from "../lib/people";
 import { relationshipTemp, RELATIONSHIP_TEMP_LABEL, type RelationshipTemp } from "../lib/derive";
+import { pickWisdomForPerson } from "../lib/wisdom";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
 import type { Person } from "../types";
 
@@ -164,6 +167,60 @@ function AnniversarySection({ person, onAdd, onDelete }: { person: Person; onAdd
   );
 }
 
+function IntentionSection({ person, onAdd, onDelete }: { person: Person; onAdd: (text: string) => void; onDelete: (id: string) => void }) {
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = () => {
+    const text = draft.trim();
+    if (!text) return;
+    const reason = checkSensitive(text);
+    if (reason) {
+      setError(BLOCK_REASON_LABEL[reason]);
+      return;
+    }
+    setError(null);
+    onAdd(text);
+    setDraft("");
+  };
+
+  const intentions = [...(person.intentions ?? [])].sort((a, b) => b.at - a.at);
+
+  return (
+    <section style={sectionStyle}>
+      <h2 style={headingStyle}>다짐</h2>
+      <p style={{ color: "var(--muted)", fontSize: 12.5, margin: 0 }}>이 사람한텐 이렇게 하고 싶다, 하는 다짐을 적어두세요.</p>
+      <textarea
+        rows={2}
+        placeholder="예: 먼저 연락하는 사람이 되고 싶다"
+        value={draft}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          setError(null);
+        }}
+        style={{ ...inputStyle, resize: "vertical" }}
+      />
+      {error && <p style={{ color: "var(--warn)", fontSize: 12.5, margin: 0 }}>{error}</p>}
+      <button type="button" onClick={submit} disabled={!draft.trim()} style={{ ...smallAddBtnStyle, alignSelf: "flex-start" }}>
+        다짐 추가
+      </button>
+
+      {intentions.length === 0 ? (
+        <p style={{ color: "var(--muted)", fontSize: 13.5, margin: 0 }}>아직 적어둔 다짐이 없어요.</p>
+      ) : (
+        intentions.map((i) => (
+          <div key={i.id} style={rowStyle}>
+            <p style={{ margin: 0, fontSize: 14 }}>{i.text}</p>
+            <button type="button" onClick={() => onDelete(i.id)} style={deleteLinkStyle}>
+              삭제
+            </button>
+          </div>
+        ))
+      )}
+    </section>
+  );
+}
+
 export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => void; onEdit: (id: string) => void }) {
   const { vault, update } = useSession();
   const [draft, setDraft] = useState("");
@@ -216,6 +273,7 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
   };
 
   const temp = relationshipTemp(person);
+  const wisdom = pickWisdomForPerson(person);
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 16 }}>
@@ -267,6 +325,11 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
       >
         오늘 연락했어요
       </button>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: 14, borderRadius: 16, background: "var(--accent)" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent-fg)", opacity: 0.85 }}>{person.name}에게 어울리는 말</span>
+        <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5, color: "var(--accent-fg)" }}>{wisdom.text}</p>
+      </div>
 
       <section style={sectionStyle}>
         <h2 style={headingStyle}>기록</h2>
@@ -407,6 +470,12 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
             ))
         )}
       </section>
+
+      <IntentionSection
+        person={person}
+        onAdd={(text) => update((v) => addIntention(v, id, text))}
+        onDelete={(intentionId) => update((v) => deleteIntention(v, id, intentionId))}
+      />
 
       <button type="button" onClick={removePerson} style={{ background: "none", border: "none", color: "var(--warn)", fontSize: 12.5, alignSelf: "center", marginTop: 6 }}>
         이 사람 전체 삭제

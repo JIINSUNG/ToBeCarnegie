@@ -28,6 +28,14 @@ export interface Anniversary {
   updatedAt: number;
 }
 
+/** "이 사람한텐 이렇게 하고 싶다" 같은, 이 사람에 대한 나만의 다짐. 여러 개 쌓일 수 있다. */
+export interface Intention {
+  id: string;
+  text: string;
+  at: number;
+  updatedAt: number;
+}
+
 export interface Person {
   id: string;
   name: string;
@@ -46,6 +54,8 @@ export interface Person {
   dislikes?: string[];
   /** 상대에게 받은 은혜·도움 */
   favors?: string[];
+  /** "이 사람한텐 이렇게 하고 싶다" 다짐들 */
+  intentions?: Intention[];
   createdAt: number;
   updatedAt: number;
 }

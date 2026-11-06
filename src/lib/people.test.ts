@@ -5,11 +5,13 @@ import {
   addDislike,
   addFavor,
   addGift,
+  addIntention,
   addLike,
   addNote,
   createPerson,
   deleteAnniversary,
   deleteGift,
+  deleteIntention,
   deleteNote,
   deletePerson,
   findPeopleByName,
@@ -95,11 +97,13 @@ describe("people", () => {
     v = addLike(v, minsu.id, "커피");
     v = addDislike(v, jieun.id, "민트초코");
     v = addFavor(v, minsu.id, "이사할 때 도와줌");
+    v = addIntention(v, jieun.id, "먼저 연락하고 싶다");
 
     expect(searchPeople(v, "향수").map((p) => p.name)).toEqual(["김민수"]);
     expect(searchPeople(v, "입사").map((p) => p.name)).toEqual(["이지은"]);
     expect(searchPeople(v, "커피").map((p) => p.name)).toEqual(["김민수"]);
     expect(searchPeople(v, "민트초코").map((p) => p.name)).toEqual(["이지은"]);
+    expect(searchPeople(v, "먼저 연락").map((p) => p.name)).toEqual(["이지은"]);
     expect(searchPeople(v, "도와줌").map((p) => p.name)).toEqual(["김민수"]);
   });
 
@@ -169,6 +173,18 @@ describe("people", () => {
     expect(findPerson(v, id)?.likes).toEqual([]);
     expect(findPerson(v, id)?.dislikes).toEqual([]);
     expect(findPerson(v, id)?.favors).toEqual([]);
+  });
+
+  it("addIntention·deleteIntention이 그 사람의 intentions만 건드린다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    v = addIntention(v, id, "이 사람한텐 먼저 연락하고 싶다");
+    expect(findPerson(v, id)?.intentions).toHaveLength(1);
+    expect(findPerson(v, id)?.intentions![0].text).toBe("이 사람한텐 먼저 연락하고 싶다");
+
+    const intentionId = findPerson(v, id)!.intentions![0].id;
+    v = deleteIntention(v, id, intentionId);
+    expect(findPerson(v, id)?.intentions).toHaveLength(0);
   });
 
   it("findPeopleByName은 대소문자 무시하고 이름이 정확히 같은 사람만 찾는다", () => {
