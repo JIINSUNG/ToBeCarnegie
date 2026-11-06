@@ -30,6 +30,7 @@ function Gate() {
           onPeople={() => setView({ name: "people" })}
           onBriefing={() => setView({ name: "briefing" })}
           onSettings={() => setView({ name: "settings" })}
+          onOpenPerson={(id) => setView({ name: "card", id })}
         />
       );
     case "people":

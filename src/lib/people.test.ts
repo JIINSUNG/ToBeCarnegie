@@ -12,6 +12,7 @@ import {
   deleteGift,
   deleteNote,
   deletePerson,
+  findPeopleByName,
   findPerson,
   isValidAnniversaryDate,
   isValidBirthday,
@@ -150,6 +151,17 @@ describe("people", () => {
     expect(findPerson(v, id)?.likes).toEqual([]);
     expect(findPerson(v, id)?.dislikes).toEqual([]);
     expect(findPerson(v, id)?.favors).toEqual([]);
+  });
+
+  it("findPeopleByName은 대소문자 무시하고 이름이 정확히 같은 사람만 찾는다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    v = createPerson(v, "Minsu");
+    v = createPerson(v, "민수철");
+
+    expect(findPeopleByName(v, "민수").map((p) => p.name)).toEqual(["민수"]);
+    expect(findPeopleByName(v, "MINSU").map((p) => p.name)).toEqual(["Minsu"]);
+    expect(findPeopleByName(v, "없는사람")).toEqual([]);
+    expect(findPeopleByName(v, "")).toEqual([]);
   });
 
   it("isValidAnniversaryDate는 YYYY-MM-DD 형식과 실제 존재하는 날짜만 통과시킨다", () => {

@@ -169,6 +169,13 @@ export function findPerson(vault: Vault, id: string): Person | undefined {
   return vault.people.find((p) => p.id === id);
 }
 
+/** 이름이 정확히(대소문자 무시) 일치하는 사람들. 한 줄 빠른 기록이 누구 걸로 갈지 정할 때 쓴다. */
+export function findPeopleByName(vault: Vault, name: string): Person[] {
+  const n = name.trim().toLowerCase();
+  if (!n) return [];
+  return vault.people.filter((p) => p.name.trim().toLowerCase() === n);
+}
+
 export function searchPeople(vault: Vault, query: string): Person[] {
   const q = query.trim().toLowerCase();
   if (!q) return vault.people;
