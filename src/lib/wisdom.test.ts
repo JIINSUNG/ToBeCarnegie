@@ -5,7 +5,7 @@ import { emptyVault } from "../types";
 
 describe("WISDOM", () => {
   it("문구가 충분히 많고(데이터가 빈약하지 않고), 전부 비어있지 않다", () => {
-    expect(WISDOM.length).toBeGreaterThanOrEqual(30);
+    expect(WISDOM.length).toBeGreaterThanOrEqual(100);
     for (const w of WISDOM) {
       expect(w.text.trim().length).toBeGreaterThan(0);
       expect(w.tags.length).toBeGreaterThan(0);
