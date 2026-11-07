@@ -1,7 +1,7 @@
 // Vault 안의 Person 배열을 다루는 순수 함수들. 전부 "새 Vault를 돌려주는" 불변 업데이트 방식이라
 // session.tsx의 update(fn)에 그대로 넘겨 쓸 수 있다.
 import { nanoid } from "nanoid";
-import type { Anniversary, Gift, Intention, Note, Person, Vault } from "../types";
+import type { Anniversary, CustomWisdom, Gift, Intention, Note, Person, Vault } from "../types";
 
 /** id를 안 넘기면 새로 만든다. session.tsx의 update(fn) 안에서 쓸 땐, fn이 두 번 호출돼도(React
  * StrictMode) 같은 사람이 만들어지도록 id를 밖에서 미리 만들어 넘기는 쪽을 권장한다. */
@@ -268,4 +268,23 @@ export function isValidAnniversaryDate(value: string): boolean {
   const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
   const daysInMonth = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
   return day >= 1 && day <= daysInMonth;
+}
+
+/** 홈 화면 "오늘의 한마디"에 섞여 나올 나만의 문구를 추가한다. */
+export function addCustomWisdom(vault: Vault, text: string, id: string = nanoid()): Vault {
+  const entry: CustomWisdom = { id, text, createdAt: Date.now() };
+  return { ...vault, customWisdom: [...(vault.customWisdom ?? []), entry] };
+}
+
+export function removeCustomWisdom(vault: Vault, id: string): Vault {
+  return { ...vault, customWisdom: (vault.customWisdom ?? []).filter((w) => w.id !== id) };
+}
+
+/** 오늘 하루만 유효한 다짐을 적어/고친다. date는 "YYYY-MM-DD"(기본 오늘). */
+export function setDailyIntention(vault: Vault, text: string, date: string): Vault {
+  return { ...vault, dailyIntention: { text, date } };
+}
+
+export function clearDailyIntention(vault: Vault): Vault {
+  return { ...vault, dailyIntention: undefined };
 }

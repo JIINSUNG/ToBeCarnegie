@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { emptyVault } from "../types";
 import {
   addAnniversary,
+  addCustomWisdom,
   addDislike,
   addFavor,
   addGift,
@@ -9,6 +10,7 @@ import {
   addLike,
   addNote,
   allGroups,
+  clearDailyIntention,
   createPerson,
   deleteAnniversary,
   deleteGift,
@@ -20,10 +22,12 @@ import {
   isValidAnniversaryDate,
   isValidBirthday,
   isValidMbti,
+  removeCustomWisdom,
   removeDislike,
   removeFavor,
   removeLike,
   searchPeople,
+  setDailyIntention,
   setGiftRepaidWith,
   setLastContact,
   toggleGiftRepaid,
@@ -253,5 +257,19 @@ describe("people", () => {
     v = updatePerson(v, v.people[0].id, { groups: ["대학동기", "헬스장"] });
     v = updatePerson(v, v.people[1].id, { groups: ["헬스장", "회사"] });
     expect(allGroups(v)).toEqual(["대학동기", "헬스장", "회사"]);
+  });
+
+  it("addCustomWisdom/removeCustomWisdom으로 나만의 문구를 추가·삭제할 수 있다", () => {
+    let v = addCustomWisdom(emptyVault(), "작은 약속도 꼭 지켜라.", "w1");
+    expect(v.customWisdom).toEqual([{ id: "w1", text: "작은 약속도 꼭 지켜라.", createdAt: expect.any(Number) }]);
+    v = removeCustomWisdom(v, "w1");
+    expect(v.customWisdom).toEqual([]);
+  });
+
+  it("setDailyIntention/clearDailyIntention으로 오늘의 다짐을 적고 지울 수 있다", () => {
+    let v = setDailyIntention(emptyVault(), "오늘은 먼저 연락해보기", "2024-01-01");
+    expect(v.dailyIntention).toEqual({ text: "오늘은 먼저 연락해보기", date: "2024-01-01" });
+    v = clearDailyIntention(v);
+    expect(v.dailyIntention).toBeUndefined();
   });
 });

@@ -64,12 +64,28 @@ export interface Person {
   updatedAt: number;
 }
 
+/** 사용자가 직접 추가한 "오늘의 한마디" 문구 — lib/wisdom.ts의 기본 문구 풀에 섞여서 나온다. */
+export interface CustomWisdom {
+  id: string;
+  text: string;
+  createdAt: number;
+}
+
+/** "오늘 하루" 동안만 유효한, 사용자가 스스로에게 하는 다짐. 홈 화면 상단에 뜬다. */
+export interface DailyIntention {
+  text: string;
+  /** "YYYY-MM-DD" — 오늘 날짜와 다르면 지난 다짐이라 더 이상 안 보여준다. */
+  date: string;
+}
+
 /** 잠금 해제하면 메모리에만 떠 있는 평문 데이터 전체. */
 export interface Vault {
   version: number;
   people: Person[];
   /** 마지막으로 백업 파일·코드를 내보낸 시각 (derive.ts의 백업 알림이 참고). */
   lastBackupAt?: number;
+  customWisdom?: CustomWisdom[];
+  dailyIntention?: DailyIntention;
 }
 
 export function emptyVault(): Vault {

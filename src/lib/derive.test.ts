@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { emptyVault } from "../types";
 import { addAnniversary, createPerson, updatePerson } from "./people";
-import { buildBriefing, relationshipTemp, shouldRemindBackup, staleContacts, upcomingAnniversaries, upcomingBirthdays } from "./derive";
+import { buildBriefing, relationshipTemp, shouldRemindBackup, staleContacts, todayDateStr, upcomingAnniversaries, upcomingBirthdays } from "./derive";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = new Date(2026, 5, 15).getTime(); // 2026-06-15
+
+describe("todayDateStr", () => {
+  it("로컬 날짜를 YYYY-MM-DD로 돌려준다(한 자리 월/일은 0으로 채움)", () => {
+    expect(todayDateStr(new Date(2026, 5, 15).getTime())).toBe("2026-06-15");
+    expect(todayDateStr(new Date(2026, 0, 5).getTime())).toBe("2026-01-05");
+  });
+});
 
 describe("upcomingBirthdays", () => {
   it("withinDays 안의 생일만, 가까운 순서로 돌려준다", () => {

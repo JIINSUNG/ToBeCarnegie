@@ -4,6 +4,14 @@ import type { Anniversary, Person, Vault } from "../types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** 로컬 기준 "YYYY-MM-DD" — 오늘의 다짐이 자정 넘어가면 사라지게 하는 기준으로 쓴다. */
+export function todayDateStr(now: number = Date.now()): string {
+  const d = new Date(now);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 export interface UpcomingBirthday {
   person: Person;
   daysUntil: number;

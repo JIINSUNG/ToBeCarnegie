@@ -32,6 +32,15 @@ describe("pickRandomWisdom", () => {
       expect(w.id).not.toBe("w1");
     }
   });
+
+  it("extra로 넘긴 나만의 문구도 풀에 섞여서 나올 수 있다", () => {
+    const extra = [{ id: "custom-1", text: "나만의 다짐", tags: [] }];
+    let sawCustom = false;
+    for (let i = 0; i < 500 && !sawCustom; i++) {
+      if (pickRandomWisdom(undefined, extra).id === "custom-1") sawCustom = true;
+    }
+    expect(sawCustom).toBe(true);
+  });
 });
 
 describe("relevantTagsForPerson", () => {

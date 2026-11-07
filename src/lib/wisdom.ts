@@ -138,8 +138,10 @@ export const WISDOM: WisdomQuote[] = [
   { id: "w102", text: "강요하지 말고 상대방이 스스로 깨닫도록 기다려라.", tags: ["인내", "포용"] },
 ];
 
-export function pickRandomWisdom(excludeId?: string): WisdomQuote {
-  const pool = excludeId ? WISDOM.filter((w) => w.id !== excludeId) : WISDOM;
+/** extra(사용자가 설정에서 추가한 나만의 문구)를 기본 문구 풀에 섞어서 고른다. */
+export function pickRandomWisdom(excludeId?: string, extra: WisdomQuote[] = []): WisdomQuote {
+  const all = [...WISDOM, ...extra];
+  const pool = excludeId ? all.filter((w) => w.id !== excludeId) : all;
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
