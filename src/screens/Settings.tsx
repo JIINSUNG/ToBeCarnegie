@@ -20,21 +20,39 @@ function downloadBackupFile(file: BackupFile) {
   URL.revokeObjectURL(url);
 }
 
+function timeAgo(ts: number): string {
+  const diffMin = Math.floor((Date.now() - ts) / 60000);
+  if (diffMin < 1) return "방금";
+  if (diffMin < 60) return `${diffMin}분 전`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH}시간 전`;
+  return `${Math.floor(diffH / 24)}일 전`;
+}
+
 export function Settings({ onBack }: { onBack: () => void }) {
-  const { vault, exportBackup, restoreBackup, hasPasskey, registerPasskey, removePasskey, syncConfigured, syncNow } = useSession();
+  const {
+    vault,
+    exportBackup,
+    restoreBackup,
+    hasPasskey,
+    registerPasskey,
+    removePasskey,
+    syncConfigured,
+    syncNow,
+    syncStatus,
+    lastSyncedAt,
+    error: syncError,
+  } = useSession();
   const [code, setCode] = useState("");
   const [pasteCode, setPasteCode] = useState("");
   const [incoming, setIncoming] = useState<BackupFile | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
-  const [syncBusy, setSyncBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSync = async () => {
-    setSyncBusy(true);
     const ok = await syncNow();
-    setSyncBusy(false);
     if (ok) {
       setMessage("동기화했어요.");
       setError(null);
@@ -140,9 +158,16 @@ export function Settings({ onBack }: { onBack: () => void }) {
         <section style={sectionStyle}>
           <h2 style={headingStyle}>동기화</h2>
           <p style={hintStyle}>구글 계정으로 다른 기기와 맞춰요. 여기서도 암호화된 채로만 오가요(처음엔 구글 로그인 창이 떠요).</p>
-          <button type="button" onClick={handleSync} disabled={syncBusy} style={primaryBtnStyle}>
-            {syncBusy ? "동기화 중…" : "지금 동기화"}
+          <button type="button" onClick={handleSync} disabled={syncStatus === "syncing"} style={primaryBtnStyle}>
+            {syncStatus === "syncing" ? "동기화 중…" : "지금 동기화"}
           </button>
+          {syncStatus === "error" && syncError ? (
+            <p style={{ ...hintStyle, color: "var(--warn)" }}>⚠️ {syncError}</p>
+          ) : lastSyncedAt ? (
+            <p style={hintStyle}>✓ 마지막 동기화: {timeAgo(lastSyncedAt)}</p>
+          ) : (
+            <p style={hintStyle}>아직 동기화한 적 없어요.</p>
+          )}
         </section>
       )}
 

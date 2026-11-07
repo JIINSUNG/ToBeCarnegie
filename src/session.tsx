@@ -35,6 +35,9 @@ import { emptyVault, type Vault } from "./types";
 const loadSync = () => import("./lib/sync");
 
 type Status = "loading" | "needs-setup" | "locked" | "unlocked";
+type SyncStatus = "idle" | "syncing" | "success" | "error";
+
+const LAST_SYNCED_KEY = "hr-last-synced-at";
 
 interface Wraps {
   passphrase: PassphraseUnlock;
@@ -47,6 +50,8 @@ interface SessionValue {
   error: string | null;
   hasPasskey: boolean;
   syncConfigured: boolean;
+  syncStatus: SyncStatus;
+  lastSyncedAt: number | null;
   setup: (passphrase: string) => Promise<void>;
   unlock: (passphrase: string) => Promise<boolean>;
   unlockPasskey: () => Promise<boolean>;
@@ -69,6 +74,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [masterKey, setMasterKey] = useState<CryptoKey | null>(null);
   const [wraps, setWraps] = useState<Wraps | null>(null);
   const [hasPasskey, setHasPasskey] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(() => {
+    try {
+      const saved = localStorage.getItem(LAST_SYNCED_KEY);
+      return saved ? Number(saved) : null;
+    } catch {
+      // localStorage를 못 읽는 환경 — 그냥 "아직 동기화 안 함"으로 보여주면 된다
+      return null;
+    }
+  });
 
   useEffect(() => {
     loadStoredVault().then((stored) => {
@@ -260,12 +275,32 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [masterKey, update]
   );
 
+  /** 파이어베이스가 돌려주는 에러에서 사람이 읽을 수 있는 이유를 뽑아낸다 — "동기화에 실패했어요"
+   * 한 줄만으로는 로그인 팝업 문제인지, 도메인이 안 걸려 있는 건지, 권한 문제인지 구분이 안 돼서
+   * 원인 코드를 같이 보여준다. */
+  function syncFailureReason(err: unknown): string {
+    const code = typeof err === "object" && err !== null && "code" in err ? String((err as { code: unknown }).code) : null;
+    if (code === "auth/unauthorized-domain") return "이 주소(도메인)가 파이어베이스에 허용돼 있지 않아요. (파이어베이스 콘솔 > Authentication > Settings > 승인된 도메인)";
+    if (code === "auth/popup-blocked") return "로그인 팝업이 브라우저에 막혔어요. 팝업 차단을 풀고 다시 시도해주세요.";
+    if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return "로그인 창을 닫아서 취소됐어요.";
+    if (code === "permission-denied") return "권한이 없어요. (다른 계정으로 로그인했거나 보안 규칙 문제일 수 있어요)";
+    if (code === "auth/timeout") return "로그인 창이 너무 오래 떠 있었어요. 팝업을 닫고 다시 시도해주세요. (팝업이 아예 안 떴다면 브라우저가 막았을 수 있어요)";
+    if (code) return `동기화에 실패했어요. (${code})`;
+    return "동기화에 실패했어요. (다른 기기와 다른 암호로 시작했을 수 있어요)";
+  }
+
   /** 지금 들고 있는 Vault를 클라우드와 맞춘다: 받아온 내용과 항목별 최신 우선으로 합친 뒤 다시 올린다. */
   const syncNow = useCallback(async (): Promise<boolean> => {
     if (!vault || !masterKey || !wraps) return false;
+    setSyncStatus("syncing");
     try {
       const { signInOwner, pullStoredVault, pushStoredVault } = await loadSync();
-      const uid = await signInOwner();
+      // 로그인 팝업을 닫지 않고 방치하면(또는 팝업이 막혀서 안 뜨면) signInWithPopup이 영영 안
+      // 끝나서, "동기화 중…"이 그대로 멈춰버린("먹통") 것처럼 보인다 — 45초 넘으면 포기하고 에러로 보여준다.
+      const uid = await Promise.race([
+        signInOwner(),
+        new Promise<never>((_, reject) => setTimeout(() => reject({ code: "auth/timeout" }), 45000)),
+      ]);
       const remoteStored = await pullStoredVault(uid);
       let finalVault = vault;
       if (remoteStored) {
@@ -277,9 +312,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const blob = await encryptWithKey(masterKey, finalVault);
       await pushStoredVault(uid, { iv: blob.iv, cipher: blob.cipher, updatedAt: Date.now(), passphrase: wraps.passphrase, passkey: wraps.passkey });
       setError(null);
+      setSyncStatus("success");
+      const now = Date.now();
+      setLastSyncedAt(now);
+      try {
+        localStorage.setItem(LAST_SYNCED_KEY, String(now));
+      } catch {
+        // 시크릿 모드 등 localStorage를 못 쓰는 환경 — 다음 동기화까지만 메모리에 남아도 괜찮다
+      }
       return true;
-    } catch {
-      setError("동기화에 실패했어요. (다른 기기와 다른 암호로 시작했을 수 있어요)");
+    } catch (err) {
+      setError(syncFailureReason(err));
+      setSyncStatus("error");
       return false;
     }
   }, [vault, masterKey, wraps, persist]);
@@ -291,6 +335,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       error,
       hasPasskey,
       syncConfigured: isSyncConfigured(),
+      syncStatus,
+      lastSyncedAt,
       setup,
       unlock,
       unlockPasskey,
@@ -308,6 +354,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       vault,
       error,
       hasPasskey,
+      syncStatus,
+      lastSyncedAt,
       setup,
       unlock,
       unlockPasskey,
