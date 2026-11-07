@@ -63,7 +63,7 @@ interface SessionValue {
   removePasskey: () => void;
   exportBackup: () => Promise<BackupFile | null>;
   restoreBackup: (file: BackupFile, mode: "merge" | "overwrite") => Promise<boolean>;
-  syncNow: () => Promise<boolean>;
+  syncNow: (auto?: boolean) => Promise<boolean>;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -287,48 +287,55 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (code === "permission-denied") return "권한이 없어요. (다른 계정으로 로그인했거나 보안 규칙 문제일 수 있어요)";
     if (code === "auth/timeout") return "로그인 창이 너무 오래 떠 있었어요. 팝업을 닫고 다시 시도해주세요. (팝업이 아예 안 떴다면 브라우저가 막았을 수 있어요)";
     if (code === "auth/redirect-in-progress") return "구글 로그인 화면으로 이동할게요. 로그인하고 돌아오면 다시 '지금 동기화'를 눌러주세요.";
+    if (code === "auth/redirect-failed")
+      return "이 앱 화면에서는 구글 로그인이 잘 안 되는 것 같아요. 브라우저(Safari/Chrome)로 열어서 동기화해보세요.";
     if (code) return `동기화에 실패했어요. (${code})`;
     return "동기화에 실패했어요. (다른 기기와 다른 암호로 시작했을 수 있어요)";
   }
 
-  /** 지금 들고 있는 Vault를 클라우드와 맞춘다: 받아온 내용과 항목별 최신 우선으로 합친 뒤 다시 올린다. */
-  const syncNow = useCallback(async (): Promise<boolean> => {
-    if (!vault || !masterKey || !wraps) return false;
-    setSyncStatus("syncing");
-    try {
-      const { signInOwner, pullStoredVault, pushStoredVault } = await loadSync();
-      // 로그인 팝업을 닫지 않고 방치하면(또는 팝업이 막혀서 안 뜨면) signInWithPopup이 영영 안
-      // 끝나서, "동기화 중…"이 그대로 멈춰버린("먹통") 것처럼 보인다 — 45초 넘으면 포기하고 에러로 보여준다.
-      const uid = await Promise.race([
-        signInOwner(),
-        new Promise<never>((_, reject) => setTimeout(() => reject({ code: "auth/timeout" }), 45000)),
-      ]);
-      const remoteStored = await pullStoredVault(uid);
-      let finalVault = vault;
-      if (remoteStored) {
-        const remoteVault = await decryptWithKey<Vault>(masterKey, { iv: remoteStored.iv, cipher: remoteStored.cipher });
-        finalVault = mergeVaults(vault, remoteVault);
-      }
-      await persist(finalVault, masterKey, wraps);
-      setVault(finalVault);
-      const blob = await encryptWithKey(masterKey, finalVault);
-      await pushStoredVault(uid, { iv: blob.iv, cipher: blob.cipher, updatedAt: Date.now(), passphrase: wraps.passphrase, passkey: wraps.passkey });
-      setError(null);
-      setSyncStatus("success");
-      const now = Date.now();
-      setLastSyncedAt(now);
+  /** 지금 들고 있는 Vault를 클라우드와 맞춘다: 받아온 내용과 항목별 최신 우선으로 합친 뒤 다시 올린다.
+   * auto=true면(리다이렉트 복귀 후 자동 재개) 로그인이 아직 안 돼 있어도 또 리다이렉트하지
+   * 않는다 — 안 그러면 일부 환경에서 리다이렉트→앱→리다이렉트 무한 루프가 될 수 있다. */
+  const syncNow = useCallback(
+    async (auto = false): Promise<boolean> => {
+      if (!vault || !masterKey || !wraps) return false;
+      setSyncStatus("syncing");
       try {
-        localStorage.setItem(LAST_SYNCED_KEY, String(now));
-      } catch {
-        // 시크릿 모드 등 localStorage를 못 쓰는 환경 — 다음 동기화까지만 메모리에 남아도 괜찮다
+        const { signInOwner, pullStoredVault, pushStoredVault } = await loadSync();
+        // 로그인 팝업을 닫지 않고 방치하면(또는 팝업이 막혀서 안 뜨면) signInWithPopup이 영영 안
+        // 끝나서, "동기화 중…"이 그대로 멈춰버린("먹통") 것처럼 보인다 — 45초 넘으면 포기하고 에러로 보여준다.
+        const uid = await Promise.race([
+          signInOwner(!auto),
+          new Promise<never>((_, reject) => setTimeout(() => reject({ code: "auth/timeout" }), 45000)),
+        ]);
+        const remoteStored = await pullStoredVault(uid);
+        let finalVault = vault;
+        if (remoteStored) {
+          const remoteVault = await decryptWithKey<Vault>(masterKey, { iv: remoteStored.iv, cipher: remoteStored.cipher });
+          finalVault = mergeVaults(vault, remoteVault);
+        }
+        await persist(finalVault, masterKey, wraps);
+        setVault(finalVault);
+        const blob = await encryptWithKey(masterKey, finalVault);
+        await pushStoredVault(uid, { iv: blob.iv, cipher: blob.cipher, updatedAt: Date.now(), passphrase: wraps.passphrase, passkey: wraps.passkey });
+        setError(null);
+        setSyncStatus("success");
+        const now = Date.now();
+        setLastSyncedAt(now);
+        try {
+          localStorage.setItem(LAST_SYNCED_KEY, String(now));
+        } catch {
+          // 시크릿 모드 등 localStorage를 못 쓰는 환경 — 다음 동기화까지만 메모리에 남아도 괜찮다
+        }
+        return true;
+      } catch (err) {
+        setError(syncFailureReason(err));
+        setSyncStatus("error");
+        return false;
       }
-      return true;
-    } catch (err) {
-      setError(syncFailureReason(err));
-      setSyncStatus("error");
-      return false;
-    }
-  }, [vault, masterKey, wraps, persist]);
+    },
+    [vault, masterKey, wraps, persist]
+  );
 
   // PWA에서 리다이렉트로 로그인만 하고 돌아왔을 때(lib/sync.ts가 markSyncRedirectPending로
   // 남겨둔 표시), 잠금을 풀자마자 동기화(받아오기·올리기)까지 자동으로 마저 한다 — 안 그러면
@@ -339,7 +346,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [syncNow]);
   useEffect(() => {
     if (status !== "unlocked" || !isSyncConfigured() || !consumeSyncRedirectPending()) return;
-    const timer = setTimeout(() => void syncNowRef.current(), 0);
+    const timer = setTimeout(() => void syncNowRef.current(true), 0);
     return () => clearTimeout(timer);
     // syncNow 자체가 아니라 "잠금이 풀린 순간"에만 반응해야 하므로(안 그러면 vault가 바뀔 때마다
     // syncNow 참조가 새로 생겨 이 effect가 계속 다시 실행된다) status만 의존성으로 둔다.

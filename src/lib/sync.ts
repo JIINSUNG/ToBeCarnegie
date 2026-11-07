@@ -54,14 +54,19 @@ function isStandalonePwa(): boolean {
 }
 
 /** 구글 계정으로 로그인하고 uid를 돌려준다(이미 로그인돼 있으면 팝업 없이 그대로 씀).
- * 이후 읽기/쓰기는 이 uid 문서(vaults/{uid})로만 가서, 다른 사람 데이터와 섞이지 않는다. */
-export async function signInOwner(): Promise<string> {
+ * 이후 읽기/쓰기는 이 uid 문서(vaults/{uid})로만 가서, 다른 사람 데이터와 섞이지 않는다.
+ * allowRedirect=false면(리다이렉트로 돌아온 직후 자동으로 동기화를 이어갈 때) 로그인이 아직
+ * 안 돼 있어도 또 리다이렉트하지 않는다 — 일부 환경(특히 PWA)에서는 리다이렉트 결과가 저장소에
+ * 제대로 안 남아 auth.currentUser가 끝내 안 채워지는 경우가 있는데, 그럴 때 자동으로 또
+ * 리다이렉트하면 "파이어베이스로 이동 → 앱 → 파이어베이스로 이동" 무한 루프가 된다. */
+export async function signInOwner(allowRedirect = true): Promise<string> {
   const auth = getAuthInstance();
   // 리다이렉트로 돌아온 직후엔 auth.currentUser가 아직 안 채워져 있을 수 있어서, 초기 상태가
   // 다 정해질 때까지 기다린다(이미 로그인돼 있으면 거의 즉시 끝남).
   await auth.authStateReady();
   if (auth.currentUser) return auth.currentUser.uid;
   if (isStandalonePwa()) {
+    if (!allowRedirect) throw { code: "auth/redirect-failed" };
     // 로그인만 하고 끝난 게 아니라 이 동기화(받아오기·올리기)까지 하려던 거였다는 걸 남겨둔다 —
     // 리다이렉트로 돌아와서 잠금을 풀면 session.tsx가 이 값을 보고 자동으로 마저 동기화한다.
     markSyncRedirectPending();
