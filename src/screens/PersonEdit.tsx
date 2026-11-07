@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { nanoid } from "nanoid";
 import { useSession } from "../session";
-import { allGroups, createPerson, findPerson, isValidBirthday, isValidMbti, updatePerson } from "../lib/people";
+import { allGroups, createPerson, findPerson, isValidBirthday, isValidBirthdayYear, isValidMbti, updatePerson } from "../lib/people";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
 
 export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone: (id: string) => void; onCancel: () => void }) {
@@ -10,6 +10,8 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
 
   const [name, setName] = useState(existing?.name ?? "");
   const [birthday, setBirthday] = useState(existing?.birthday ?? "");
+  const [yearStr, setYearStr] = useState(existing?.birthdayYear ? String(existing.birthdayYear) : "");
+  const [yearUnknown, setYearUnknown] = useState(!existing?.birthdayYear);
   const [mbti, setMbti] = useState(existing?.mbti ?? "");
   const [tags, setTags] = useState(existing?.tags.join(", ") ?? "");
   const [groups, setGroups] = useState(existing?.groups?.join(", ") ?? "");
@@ -40,6 +42,15 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
       setError("생일은 MM-DD 형식으로 적어주세요 (예: 03-15).");
       return;
     }
+    let birthdayYear: number | undefined;
+    if (birthday && !yearUnknown) {
+      const y = Number(yearStr.trim());
+      if (!yearStr.trim() || !isValidBirthdayYear(y)) {
+        setError("태어난 연도를 올바르게 적거나, 모르면 '몰라요'를 체크해주세요.");
+        return;
+      }
+      birthdayYear = y;
+    }
     if (trimmedMbti && !isValidMbti(trimmedMbti)) {
       setError("MBTI는 INTJ처럼 4글자로 적어주세요.");
       return;
@@ -52,7 +63,14 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
 
     if (existing) {
       update((v) =>
-        updatePerson(v, existing.id, { name: trimmedName, birthday: birthday || undefined, mbti: trimmedMbti || undefined, tags: tagList, groups: groupList })
+        updatePerson(v, existing.id, {
+          name: trimmedName,
+          birthday: birthday || undefined,
+          birthdayYear,
+          mbti: trimmedMbti || undefined,
+          tags: tagList,
+          groups: groupList,
+        })
       );
       onDone(existing.id);
       return;
@@ -61,7 +79,7 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
     const newId = nanoid();
     update((v) => {
       const withPerson = createPerson(v, trimmedName, newId);
-      return updatePerson(withPerson, newId, { birthday: birthday || undefined, mbti: trimmedMbti || undefined, tags: tagList, groups: groupList });
+      return updatePerson(withPerson, newId, { birthday: birthday || undefined, birthdayYear, mbti: trimmedMbti || undefined, tags: tagList, groups: groupList });
     });
     onDone(newId);
   };
@@ -87,6 +105,26 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
         <span>생일 (선택, MM-DD)</span>
         <input value={birthday} onChange={(e) => setBirthday(e.target.value)} placeholder="03-15" style={inputStyle} />
       </label>
+
+      {birthday && (
+        <label style={fieldStyle}>
+          <span>태어난 연도 (선택)</span>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input
+              value={yearUnknown ? "" : yearStr}
+              onChange={(e) => setYearStr(e.target.value)}
+              disabled={yearUnknown}
+              placeholder="1992"
+              inputMode="numeric"
+              style={{ ...inputStyle, flex: 1, opacity: yearUnknown ? 0.5 : 1 }}
+            />
+            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, whiteSpace: "nowrap" }}>
+              <input type="checkbox" checked={yearUnknown} onChange={(e) => setYearUnknown(e.target.checked)} />
+              몰라요
+            </label>
+          </div>
+        </label>
+      )}
 
       <label style={fieldStyle}>
         <span>MBTI (선택)</span>

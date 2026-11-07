@@ -6,6 +6,7 @@ import {
   addDislike,
   addFavor,
   addGift,
+  addGroupName,
   addIntention,
   addLike,
   addNote,
@@ -14,6 +15,7 @@ import {
   createPerson,
   deleteAnniversary,
   deleteGift,
+  deleteGroup,
   deleteIntention,
   deleteNote,
   deletePerson,
@@ -21,11 +23,13 @@ import {
   findPerson,
   isValidAnniversaryDate,
   isValidBirthday,
+  isValidBirthdayYear,
   isValidMbti,
   removeCustomWisdom,
   removeDislike,
   removeFavor,
   removeLike,
+  renameGroup,
   searchPeople,
   setDailyIntention,
   setGiftRepaidWith,
@@ -233,6 +237,22 @@ describe("people", () => {
     expect(isValidBirthday("")).toBe(false);
   });
 
+  it("isValidBirthdayYear는 1900~올해 범위의 정수만 통과시킨다", () => {
+    expect(isValidBirthdayYear(1992)).toBe(true);
+    expect(isValidBirthdayYear(1899)).toBe(false);
+    expect(isValidBirthdayYear(new Date().getFullYear() + 1)).toBe(false);
+    expect(isValidBirthdayYear(1992.5)).toBe(false);
+  });
+
+  it("updatePerson으로 birthdayYear를 넣거나 지울 수 있다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    v = updatePerson(v, id, { birthday: "03-15", birthdayYear: 1992 });
+    expect(findPerson(v, id)?.birthdayYear).toBe(1992);
+    v = updatePerson(v, id, { birthdayYear: undefined });
+    expect(findPerson(v, id)?.birthdayYear).toBeUndefined();
+  });
+
   it("isValidMbti는 4글자이고 각 자리가 정해진 두 글자 중 하나일 때만 통과시킨다", () => {
     expect(isValidMbti("INTJ")).toBe(true);
     expect(isValidMbti("intj")).toBe(true);
@@ -257,6 +277,31 @@ describe("people", () => {
     v = updatePerson(v, v.people[0].id, { groups: ["대학동기", "헬스장"] });
     v = updatePerson(v, v.people[1].id, { groups: ["헬스장", "회사"] });
     expect(allGroups(v)).toEqual(["대학동기", "헬스장", "회사"]);
+  });
+
+  it("addGroupName으로 아무도 없는 그룹도 미리 만들어둘 수 있다", () => {
+    let v = addGroupName(emptyVault(), "동호회");
+    expect(allGroups(v)).toEqual(["동호회"]);
+    v = addGroupName(v, "동호회");
+    expect(v.groupNames).toEqual(["동호회"]);
+  });
+
+  it("renameGroup은 등록부와 사람들의 groups를 전부 바꾼다", () => {
+    let v = createPerson(emptyVault(), "김민수");
+    v = updatePerson(v, v.people[0].id, { groups: ["헬스장"] });
+    v = addGroupName(v, "동호회");
+    v = renameGroup(v, "헬스장", "운동");
+    expect(findPerson(v, v.people[0].id)?.groups).toEqual(["운동"]);
+    expect(allGroups(v)).toEqual(["동호회", "운동"]);
+  });
+
+  it("deleteGroup은 등록부에서 지우고 사람들에게서도 태그를 뗀다(사람은 그대로)", () => {
+    let v = createPerson(emptyVault(), "김민수");
+    v = updatePerson(v, v.people[0].id, { groups: ["헬스장", "회사"] });
+    v = deleteGroup(v, "헬스장");
+    expect(findPerson(v, v.people[0].id)?.groups).toEqual(["회사"]);
+    expect(v.people.length).toBe(1);
+    expect(allGroups(v)).toEqual(["회사"]);
   });
 
   it("addCustomWisdom/removeCustomWisdom으로 나만의 문구를 추가·삭제할 수 있다", () => {

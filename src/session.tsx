@@ -285,6 +285,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return "로그인 창을 닫아서 취소됐어요.";
     if (code === "permission-denied") return "권한이 없어요. (다른 계정으로 로그인했거나 보안 규칙 문제일 수 있어요)";
     if (code === "auth/timeout") return "로그인 창이 너무 오래 떠 있었어요. 팝업을 닫고 다시 시도해주세요. (팝업이 아예 안 떴다면 브라우저가 막았을 수 있어요)";
+    if (code === "auth/redirect-in-progress") return "구글 로그인 화면으로 이동할게요. 로그인하고 돌아오면 다시 '지금 동기화'를 눌러주세요.";
     if (code) return `동기화에 실패했어요. (${code})`;
     return "동기화에 실패했어요. (다른 기기와 다른 암호로 시작했을 수 있어요)";
   }

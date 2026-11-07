@@ -39,8 +39,10 @@ export interface Intention {
 export interface Person {
   id: string;
   name: string;
-  /** "MM-DD" 형식만 저장 — 생년(나이)까지는 안 남긴다. */
+  /** "MM-DD" 형식. 생일 자체는 몰라도 될 수 있어 선택 입력. */
   birthday?: string;
+  /** 태어난 연도(선택) — 모르면 안 적어도 된다. birthday가 있을 때만 의미가 있다. */
+  birthdayYear?: number;
   /** "INTJ" 같은 4글자 MBTI (대문자). */
   mbti?: string;
   tags: string[];
@@ -86,6 +88,9 @@ export interface Vault {
   lastBackupAt?: number;
   customWisdom?: CustomWisdom[];
   dailyIntention?: DailyIntention;
+  /** 아직 아무도 안 속한 그룹도 미리 만들어둘 수 있게 하는 등록부. 실제로 쓰이는 그룹은
+   * allGroups()가 이거랑 사람들의 person.groups를 합쳐서 보여준다. */
+  groupNames?: string[];
 }
 
 export function emptyVault(): Vault {

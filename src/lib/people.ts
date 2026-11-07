@@ -27,7 +27,7 @@ export function createPerson(vault: Vault, name: string, id: string = nanoid()):
 export function updatePerson(
   vault: Vault,
   id: string,
-  patch: Partial<Pick<Person, "name" | "birthday" | "tags" | "lastContactAt" | "mbti" | "groups">>
+  patch: Partial<Pick<Person, "name" | "birthday" | "birthdayYear" | "tags" | "lastContactAt" | "mbti" | "groups">>
 ): Vault {
   return {
     ...vault,
@@ -241,8 +241,42 @@ export function isValidMbti(value: string): boolean {
 /** 지금까지 사람들에게 쓰인 그룹 이름 전부(중복 없이) — PersonEdit에서 고를 때, People에서 필터할 때 쓴다. */
 export function allGroups(vault: Vault): string[] {
   const set = new Set<string>();
+  for (const g of vault.groupNames ?? []) set.add(g);
   for (const p of vault.people) for (const g of p.groups ?? []) set.add(g);
   return [...set].sort();
+}
+
+/** 새 그룹 이름을 등록부에 추가한다(아직 아무도 안 속해도 미리 만들어둘 수 있게). 이미 있으면 그대로. */
+export function addGroupName(vault: Vault, name: string): Vault {
+  const trimmed = name.trim();
+  if (!trimmed || allGroups(vault).includes(trimmed)) return vault;
+  return { ...vault, groupNames: [...(vault.groupNames ?? []), trimmed] };
+}
+
+/** 그룹 이름을 바꾼다 — 등록부와, 이 그룹에 속한 모든 사람의 person.groups를 전부 갱신한다. */
+export function renameGroup(vault: Vault, oldName: string, newName: string): Vault {
+  const trimmed = newName.trim();
+  if (!trimmed || trimmed === oldName) return vault;
+  return {
+    ...vault,
+    groupNames: (vault.groupNames ?? []).map((g) => (g === oldName ? trimmed : g)),
+    people: vault.people.map((p) => {
+      if (!(p.groups ?? []).includes(oldName)) return p;
+      const next = [...new Set((p.groups ?? []).map((g) => (g === oldName ? trimmed : g)))];
+      return { ...p, groups: next, updatedAt: Date.now() };
+    }),
+  };
+}
+
+/** 그룹을 지운다 — 등록부에서 빼고, 이 그룹에 속해 있던 사람들에게서도 태그를 뗀다(사람 자체는 그대로). */
+export function deleteGroup(vault: Vault, name: string): Vault {
+  return {
+    ...vault,
+    groupNames: (vault.groupNames ?? []).filter((g) => g !== name),
+    people: vault.people.map((p) =>
+      (p.groups ?? []).includes(name) ? { ...p, groups: (p.groups ?? []).filter((g) => g !== name), updatedAt: Date.now() } : p
+    ),
+  };
 }
 
 /** "MM-DD" 형식만 허용 — 유효한 달·일인지도 확인한다. */
@@ -254,6 +288,12 @@ export function isValidBirthday(value: string): boolean {
   if (month < 1 || month > 12) return false;
   const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
   return day >= 1 && day <= daysInMonth;
+}
+
+/** 태어난 연도로 말이 되는 범위인지(미래거나 너무 옛날이면 오타로 본다). */
+export function isValidBirthdayYear(year: number): boolean {
+  const thisYear = new Date().getFullYear();
+  return Number.isInteger(year) && year >= 1900 && year <= thisYear;
 }
 
 /** 기념일용 "YYYY-MM-DD" — 연도까지 포함한 실제 날짜인지 확인한다. */

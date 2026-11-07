@@ -316,7 +316,7 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
             )}
           </h1>
           <p style={{ color: "var(--muted)", fontSize: 13, margin: "4px 0 0" }}>
-            {person.birthday && `생일 ${person.birthday}`}
+            {person.birthday && `생일 ${person.birthdayYear ? `${person.birthdayYear}-` : ""}${person.birthday}`}
             {person.birthday && person.tags.length > 0 && " · "}
             {person.tags.join(" · ")}
           </p>
