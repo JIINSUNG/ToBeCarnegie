@@ -23,11 +23,21 @@ function statusLine(person: Person): string {
   return `${label} · ${formatDate(person.lastContactAt)}`;
 }
 
-export function People({ onOpen, onAdd, onBack }: { onOpen: (id: string) => void; onAdd: () => void; onBack: () => void }) {
+export function People({
+  onOpen,
+  onAdd,
+  onBack,
+  initialGroupedView = false,
+}: {
+  onOpen: (id: string) => void;
+  onAdd: () => void;
+  onBack: () => void;
+  initialGroupedView?: boolean;
+}) {
   const { vault, update } = useSession();
   const [q, setQ] = useState("");
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
-  const [groupedView, setGroupedView] = useState(false);
+  const [groupedView, setGroupedView] = useState(initialGroupedView);
   const [managingGroups, setManagingGroups] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [renamingGroup, setRenamingGroup] = useState<string | null>(null);
