@@ -2,7 +2,7 @@
 // Vault는 하나의 랜덤 "마스터 키"로만 암복호화된다. 패스프레이즈·패스키는 전부 그 마스터 키를
 // 감싸는(wrap) KEK일 뿐이라, 잠금 방법을 늘려도 Vault를 다시 암호화할 필요가 없다.
 // 마스터 키와 복호화된 Vault는 이 안의 React state(메모리)에만 있고, lock()을 부르면 바로 버려진다.
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   PBKDF2_ITERATIONS,
   decryptWithKey,
@@ -28,6 +28,7 @@ import { registerPasskey as registerPasskeyCredential, unlockWithPasskey } from 
 import { createBackupFile, restoreMerge, restoreOverwrite, type BackupFile } from "./lib/backup";
 import { mergeVaults } from "./lib/merge";
 import { isSyncConfigured } from "./lib/sync-env";
+import { consumeSyncRedirectPending } from "./lib/sync-pending";
 import { emptyVault, type Vault } from "./types";
 
 // lib/sync.ts는 Firebase SDK 전체를 끌어오므로, 동기화를 실제로 쓸 때만 동적으로 불러온다
@@ -328,6 +329,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       return false;
     }
   }, [vault, masterKey, wraps, persist]);
+
+  // PWA에서 리다이렉트로 로그인만 하고 돌아왔을 때(lib/sync.ts가 markSyncRedirectPending로
+  // 남겨둔 표시), 잠금을 풀자마자 동기화(받아오기·올리기)까지 자동으로 마저 한다 — 안 그러면
+  // "동기화" 버튼을 한 번 더 눌러야 한다는 걸 몰라서 데이터가 안 맞춰진 것처럼 보인다.
+  const syncNowRef = useRef(syncNow);
+  useEffect(() => {
+    syncNowRef.current = syncNow;
+  }, [syncNow]);
+  useEffect(() => {
+    if (status !== "unlocked" || !isSyncConfigured() || !consumeSyncRedirectPending()) return;
+    const timer = setTimeout(() => void syncNowRef.current(), 0);
+    return () => clearTimeout(timer);
+    // syncNow 자체가 아니라 "잠금이 풀린 순간"에만 반응해야 하므로(안 그러면 vault가 바뀔 때마다
+    // syncNow 참조가 새로 생겨 이 effect가 계속 다시 실행된다) status만 의존성으로 둔다.
+  }, [status]);
 
   const value = useMemo<SessionValue>(
     () => ({

@@ -7,6 +7,7 @@ import { initializeApp, type FirebaseApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth, signInWithPopup, signInWithRedirect, type Auth } from "firebase/auth";
 import { doc, getDoc, getFirestore, onSnapshot, setDoc, type Firestore, type Unsubscribe } from "firebase/firestore";
 import type { StoredVault } from "./storage";
+import { markSyncRedirectPending } from "./sync-pending";
 
 export { isSyncConfigured } from "./sync-env";
 
@@ -61,6 +62,9 @@ export async function signInOwner(): Promise<string> {
   await auth.authStateReady();
   if (auth.currentUser) return auth.currentUser.uid;
   if (isStandalonePwa()) {
+    // 로그인만 하고 끝난 게 아니라 이 동기화(받아오기·올리기)까지 하려던 거였다는 걸 남겨둔다 —
+    // 리다이렉트로 돌아와서 잠금을 풀면 session.tsx가 이 값을 보고 자동으로 마저 동기화한다.
+    markSyncRedirectPending();
     await signInWithRedirect(auth, new GoogleAuthProvider());
     // signInWithRedirect는 페이지 전체를 구글 로그인 화면으로 이동시키므로 보통 이 아래 코드는
     // 실행되지 않는다(페이지가 이동하기 전에 여기 도달해도, 호출부가 이 code를 보고 로그인 진행
