@@ -4,19 +4,12 @@ import { useSession } from "../session";
 const MIN_LENGTH = 8;
 
 export function Lock() {
-  const { status, error, hasPasskey, syncConfigured, setup, unlock, unlockPasskey, joinFromCloud } = useSession();
+  const { status, error, syncConfigured, setup, unlock, joinFromCloud } = useSession();
   const isSetup = status === "needs-setup";
   const [pass, setPass] = useState("");
   const [confirm, setConfirm] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  const submitPasskey = async () => {
-    setLocalError(null);
-    setBusy(true);
-    await unlockPasskey();
-    setBusy(false);
-  };
 
   const submitJoinFromCloud = async () => {
     setLocalError(null);
@@ -91,14 +84,8 @@ export function Lock() {
         </button>
       </form>
 
-      {!isSetup && hasPasskey && (
-        <button type="button" onClick={submitPasskey} disabled={busy} style={passkeyButtonStyle}>
-          패스키로 잠금 해제
-        </button>
-      )}
-
       {isSetup && syncConfigured && (
-        <button type="button" onClick={submitJoinFromCloud} disabled={busy} style={passkeyButtonStyle}>
+        <button type="button" onClick={submitJoinFromCloud} disabled={busy} style={secondaryButtonStyle}>
           다른 기기에서 이미 쓰고 있어요 (구글 계정으로 불러오기)
         </button>
       )}
@@ -130,7 +117,7 @@ const buttonStyle: React.CSSProperties = {
   fontWeight: 600,
 };
 
-const passkeyButtonStyle: React.CSSProperties = {
+const secondaryButtonStyle: React.CSSProperties = {
   padding: "12px 14px",
   borderRadius: "var(--radius)",
   border: "1px solid var(--line)",

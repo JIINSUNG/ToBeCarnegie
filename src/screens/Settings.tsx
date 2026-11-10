@@ -8,7 +8,6 @@ import {
   type BackupFile,
 } from "../lib/backup";
 import { shouldRemindBackup } from "../lib/derive";
-import { isPasskeySupported } from "../lib/passkey";
 import { addCustomWisdom, removeCustomWisdom } from "../lib/people";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
 
@@ -32,26 +31,12 @@ function timeAgo(ts: number): string {
 }
 
 export function Settings({ onBack }: { onBack: () => void }) {
-  const {
-    vault,
-    update,
-    exportBackup,
-    restoreBackup,
-    hasPasskey,
-    registerPasskey,
-    removePasskey,
-    syncConfigured,
-    syncNow,
-    syncStatus,
-    lastSyncedAt,
-    error: syncError,
-  } = useSession();
+  const { vault, update, exportBackup, restoreBackup, syncConfigured, syncNow, syncStatus, lastSyncedAt, error: syncError } = useSession();
   const [code, setCode] = useState("");
   const [pasteCode, setPasteCode] = useState("");
   const [incoming, setIncoming] = useState<BackupFile | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [wisdomDraft, setWisdomDraft] = useState("");
   const [wisdomError, setWisdomError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,22 +64,6 @@ export function Settings({ onBack }: { onBack: () => void }) {
       setMessage("동기화했어요.");
       setError(null);
     }
-  };
-
-  const handleRegisterPasskey = async () => {
-    setPasskeyBusy(true);
-    const ok = await registerPasskey("관계노트");
-    setPasskeyBusy(false);
-    if (ok) {
-      setMessage("패스키를 등록했어요. 다음부턴 암호 대신 패스키로 잠금을 풀 수 있어요.");
-      setError(null);
-    }
-  };
-
-  const handleRemovePasskey = () => {
-    if (!confirm("등록된 패스키를 지울까요? 이후엔 암호로만 잠금을 풀 수 있어요.")) return;
-    removePasskey();
-    setMessage("패스키를 지웠어요.");
   };
 
   const handleExport = async () => {
@@ -226,23 +195,6 @@ export function Settings({ onBack }: { onBack: () => void }) {
         </section>
       )}
 
-      {isPasskeySupported() && (
-        <section style={sectionStyle}>
-          <h2 style={headingStyle}>패스키</h2>
-          <p style={hintStyle}>
-            {hasPasskey ? "이 기기에 패스키가 등록돼 있어요. 암호 대신 패스키로 잠금을 풀 수 있어요." : "매번 암호 치기 귀찮으면 이 기기에 패스키를 등록해두세요."}
-          </p>
-          {hasPasskey ? (
-            <button type="button" onClick={handleRemovePasskey} style={{ ...secondaryBtnStyle, color: "var(--warn)" }}>
-              패스키 지우기
-            </button>
-          ) : (
-            <button type="button" onClick={handleRegisterPasskey} disabled={passkeyBusy} style={primaryBtnStyle}>
-              {passkeyBusy ? "등록 중…" : "패스키 등록하기"}
-            </button>
-          )}
-        </section>
-      )}
 
       <section style={sectionStyle}>
         <h2 style={headingStyle}>백업 복원</h2>

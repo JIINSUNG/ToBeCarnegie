@@ -86,8 +86,8 @@ export async function pullStoredVault(uid: string): Promise<StoredVault | null> 
 }
 
 export async function pushStoredVault(uid: string, stored: StoredVault): Promise<void> {
-  // Firestore는 필드 값이 undefined면 바로 거부한다("invalid-argument") — 패스키를 등록 안 한
-  // 사람은 stored.passkey가 undefined라서, 그대로 넘기면 동기화할 때마다 실패했다.
+  // Firestore는 필드 값이 undefined면 바로 거부한다("invalid-argument") — StoredVault에
+  // undefined인 선택 필드가 섞여 있을 수 있어서 안전하게 걸러내고 보낸다.
   const clean = Object.fromEntries(Object.entries(stored).filter(([, v]) => v !== undefined));
   await setDoc(doc(getDb(), VAULTS_COLLECTION, uid), clean);
 }

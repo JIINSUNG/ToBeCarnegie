@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   decryptWithKey,
   deriveKey,
-  deriveKeyFromPrf,
   encryptWithKey,
   generateMasterKey,
   randomSalt,
@@ -66,24 +65,5 @@ describe("key wrapping", () => {
     const masterKey = await generateMasterKey();
     const wrapped = await wrapKey(rightKek, masterKey);
     await expect(unwrapKey(wrongKek, wrapped)).rejects.toThrow();
-  });
-});
-
-describe("deriveKeyFromPrf", () => {
-  it("같은 PRF 출력이면 같은 키가 나온다 (암복호화 호환)", async () => {
-    const prfOutput = crypto.getRandomValues(new Uint8Array(32)).buffer;
-    const keyA = await deriveKeyFromPrf(prfOutput);
-    const keyB = await deriveKeyFromPrf(prfOutput);
-    const blob = await encryptWithKey(keyA, { ok: true });
-    expect(await decryptWithKey(keyB, blob)).toEqual({ ok: true });
-  });
-
-  it("다른 PRF 출력이면 다른 키가 나온다", async () => {
-    const a = crypto.getRandomValues(new Uint8Array(32)).buffer;
-    const b = crypto.getRandomValues(new Uint8Array(32)).buffer;
-    const keyA = await deriveKeyFromPrf(a);
-    const keyB = await deriveKeyFromPrf(b);
-    const blob = await encryptWithKey(keyA, { ok: true });
-    await expect(decryptWithKey(keyB, blob)).rejects.toThrow();
   });
 });

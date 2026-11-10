@@ -83,14 +83,3 @@ export async function unwrapKey(kek: CryptoKey, blob: EncryptedBlob): Promise<Cr
   return crypto.subtle.importKey("raw", raw as BufferSource, "AES-GCM", true, ["encrypt", "decrypt"]);
 }
 
-/** WebAuthn PRF 확장이 돌려준 비밀값을 AES-GCM KEK로 바꾼다 (HKDF). */
-export async function deriveKeyFromPrf(prfOutput: ArrayBuffer): Promise<CryptoKey> {
-  const baseKey = await crypto.subtle.importKey("raw", prfOutput, "HKDF", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey(
-    { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: new TextEncoder().encode("관계노트-passkey-kek") },
-    baseKey,
-    { name: "AES-GCM", length: AES_KEY_LENGTH },
-    false,
-    ["encrypt", "decrypt"]
-  );
-}

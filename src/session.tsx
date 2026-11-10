@@ -1,13 +1,12 @@
 // 앱 전체의 잠금 상태 관리.
-// Vault는 하나의 랜덤 "마스터 키"로만 암복호화된다. 패스프레이즈·패스키는 전부 그 마스터 키를
-// 감싸는(wrap) KEK일 뿐이라, 잠금 방법을 늘려도 Vault를 다시 암호화할 필요가 없다.
+// Vault는 하나의 랜덤 "마스터 키"로만 암복호화된다. 패스프레이즈는 그 마스터 키를 감싸는(wrap)
+// KEK일 뿐이라, 잠금 방법을 늘려도 Vault를 다시 암호화할 필요가 없다.
 // 마스터 키와 복호화된 Vault는 이 안의 React state(메모리)에만 있고, lock()을 부르면 바로 버려진다.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   PBKDF2_ITERATIONS,
   decryptWithKey,
   deriveKey,
-  deriveKeyFromPrf,
   encryptWithKey,
   generateMasterKey,
   randomSalt,
@@ -16,15 +15,7 @@ import {
   unwrapKey,
   wrapKey,
 } from "./lib/crypto";
-import {
-  loadStoredVault,
-  requestPersistence,
-  saveStoredVault,
-  type PasskeyUnlock,
-  type PassphraseUnlock,
-  type StoredVault,
-} from "./lib/storage";
-import { registerPasskey as registerPasskeyCredential, unlockWithPasskey } from "./lib/passkey";
+import { loadStoredVault, requestPersistence, saveStoredVault, type PassphraseUnlock, type StoredVault } from "./lib/storage";
 import { createBackupFile, restoreMerge, restoreOverwrite, type BackupFile } from "./lib/backup";
 import { mergeVaults } from "./lib/merge";
 import { isSyncConfigured } from "./lib/sync-env";
@@ -42,25 +33,20 @@ const LAST_SYNCED_KEY = "hr-last-synced-at";
 
 interface Wraps {
   passphrase: PassphraseUnlock;
-  passkey?: PasskeyUnlock;
 }
 
 interface SessionValue {
   status: Status;
   vault: Vault | null;
   error: string | null;
-  hasPasskey: boolean;
   syncConfigured: boolean;
   syncStatus: SyncStatus;
   lastSyncedAt: number | null;
   setup: (passphrase: string) => Promise<void>;
   unlock: (passphrase: string) => Promise<boolean>;
-  unlockPasskey: () => Promise<boolean>;
   joinFromCloud: (passphrase: string) => Promise<boolean>;
   lock: () => void;
   update: (fn: (v: Vault) => Vault) => void;
-  registerPasskey: (accountName: string) => Promise<boolean>;
-  removePasskey: () => void;
   exportBackup: () => Promise<BackupFile | null>;
   restoreBackup: (file: BackupFile, mode: "merge" | "overwrite") => Promise<boolean>;
   syncNow: (auto?: boolean) => Promise<boolean>;
@@ -74,7 +60,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [masterKey, setMasterKey] = useState<CryptoKey | null>(null);
   const [wraps, setWraps] = useState<Wraps | null>(null);
-  const [hasPasskey, setHasPasskey] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(() => {
     try {
@@ -88,14 +73,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadStoredVault().then((stored) => {
-      setHasPasskey(!!stored?.passkey);
       setStatus(stored ? "locked" : "needs-setup");
     });
   }, []);
 
   const persist = useCallback(async (nextVault: Vault, mk: CryptoKey, w: Wraps) => {
     const blob = await encryptWithKey(mk, nextVault);
-    const stored: StoredVault = { iv: blob.iv, cipher: blob.cipher, updatedAt: Date.now(), passphrase: w.passphrase, passkey: w.passkey };
+    const stored: StoredVault = { iv: blob.iv, cipher: blob.cipher, updatedAt: Date.now(), passphrase: w.passphrase };
     await saveStoredVault(stored);
   }, []);
 
@@ -113,7 +97,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setMasterKey(masterKey);
       setWraps(w);
       setVault(newVault);
-      setHasPasskey(false);
       setError(null);
       setStatus("unlocked");
     },
@@ -127,9 +110,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const masterKey = await unwrapKey(kek, { iv: stored.passphrase.iv, cipher: stored.passphrase.cipher });
       const decrypted = await decryptWithKey<Vault>(masterKey, { iv: stored.iv, cipher: stored.cipher });
       setMasterKey(masterKey);
-      setWraps({ passphrase: stored.passphrase, passkey: stored.passkey });
+      setWraps({ passphrase: stored.passphrase });
       setVault(decrypted);
-      setHasPasskey(!!stored.passkey);
       setError(null);
       setStatus("unlocked");
       return true;
@@ -173,30 +155,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [unlockFromStored]
   );
 
-  const unlockPasskey = useCallback(async () => {
-    const stored = await loadStoredVault();
-    if (!stored?.passkey) {
-      setError("등록된 패스키가 없어요.");
-      return false;
-    }
-    try {
-      const prfOutput = await unlockWithPasskey(stored.passkey.credentialId, stored.passkey.prfSalt);
-      const kek = await deriveKeyFromPrf(prfOutput);
-      const masterKey = await unwrapKey(kek, { iv: stored.passkey.iv, cipher: stored.passkey.cipher });
-      const decrypted = await decryptWithKey<Vault>(masterKey, { iv: stored.iv, cipher: stored.cipher });
-      setMasterKey(masterKey);
-      setWraps({ passphrase: stored.passphrase, passkey: stored.passkey });
-      setVault(decrypted);
-      setHasPasskey(true);
-      setError(null);
-      setStatus("unlocked");
-      return true;
-    } catch {
-      setError("패스키로 잠금을 풀지 못했어요.");
-      return false;
-    }
-  }, []);
-
   const lock = useCallback(() => {
     setMasterKey(null);
     setWraps(null);
@@ -217,44 +175,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [masterKey, wraps, persist]
   );
 
-  const registerPasskey = useCallback(
-    async (accountName: string): Promise<boolean> => {
-      if (!masterKey || !wraps || !vault) return false;
-      try {
-        const reg = await registerPasskeyCredential(accountName);
-        const kek = await deriveKeyFromPrf(reg.prfOutput);
-        const wrapped = await wrapKey(kek, masterKey);
-        const newWraps: Wraps = {
-          ...wraps,
-          passkey: { credentialId: reg.credentialId, prfSalt: reg.prfSalt, iv: wrapped.iv, cipher: wrapped.cipher },
-        };
-        setWraps(newWraps);
-        setHasPasskey(true);
-        await persist(vault, masterKey, newWraps);
-        setError(null);
-        return true;
-      } catch {
-        setError("패스키를 등록하지 못했어요. (이 기기/브라우저가 지원하지 않을 수 있어요)");
-        return false;
-      }
-    },
-    [masterKey, wraps, vault, persist]
-  );
-
-  const removePasskey = useCallback(() => {
-    if (!masterKey || !vault || !wraps) return;
-    const next: Wraps = { passphrase: wraps.passphrase };
-    setWraps(next);
-    setHasPasskey(false);
-    void persist(vault, masterKey, next);
-  }, [masterKey, vault, wraps, persist]);
-
   const exportBackup = useCallback(async (): Promise<BackupFile | null> => {
     if (!vault || !masterKey || !wraps) return null;
     const now = Date.now();
     const nextVault: Vault = { ...vault, lastBackupAt: now };
     const blob = await encryptWithKey(masterKey, nextVault);
-    const stored: StoredVault = { iv: blob.iv, cipher: blob.cipher, updatedAt: now, passphrase: wraps.passphrase, passkey: wraps.passkey };
+    const stored: StoredVault = { iv: blob.iv, cipher: blob.cipher, updatedAt: now, passphrase: wraps.passphrase };
     await saveStoredVault(stored);
     setVault(nextVault);
     return createBackupFile(stored);
@@ -318,7 +244,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         await persist(finalVault, masterKey, wraps);
         setVault(finalVault);
         const blob = await encryptWithKey(masterKey, finalVault);
-        await pushStoredVault(uid, { iv: blob.iv, cipher: blob.cipher, updatedAt: Date.now(), passphrase: wraps.passphrase, passkey: wraps.passkey });
+        await pushStoredVault(uid, { iv: blob.iv, cipher: blob.cipher, updatedAt: Date.now(), passphrase: wraps.passphrase });
         setError(null);
         setSyncStatus("success");
         const now = Date.now();
@@ -358,41 +284,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       status,
       vault,
       error,
-      hasPasskey,
       syncConfigured: isSyncConfigured(),
       syncStatus,
       lastSyncedAt,
       setup,
       unlock,
-      unlockPasskey,
       joinFromCloud,
       lock,
       update,
-      registerPasskey,
-      removePasskey,
       exportBackup,
       restoreBackup,
       syncNow,
     }),
-    [
-      status,
-      vault,
-      error,
-      hasPasskey,
-      syncStatus,
-      lastSyncedAt,
-      setup,
-      unlock,
-      unlockPasskey,
-      joinFromCloud,
-      lock,
-      update,
-      registerPasskey,
-      removePasskey,
-      exportBackup,
-      restoreBackup,
-      syncNow,
-    ]
+    [status, vault, error, syncStatus, lastSyncedAt, setup, unlock, joinFromCloud, lock, update, exportBackup, restoreBackup, syncNow]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

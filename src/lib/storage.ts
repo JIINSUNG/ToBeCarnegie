@@ -19,13 +19,6 @@ export interface PassphraseUnlock extends WrappedKey {
   iterations: number;
 }
 
-export interface PasskeyUnlock extends WrappedKey {
-  /** base64url. */
-  credentialId: string;
-  /** base64 — PRF 평가에 쓰는 고정 salt. 비밀이 아니다. */
-  prfSalt: string;
-}
-
 export interface StoredVault {
   /** Vault 본문 — 마스터 키로 암호화됨. */
   iv: string;
@@ -33,8 +26,6 @@ export interface StoredVault {
   updatedAt: number;
   /** 마스터 키를 패스프레이즈 KEK로 감싼 것. 항상 있다. */
   passphrase: PassphraseUnlock;
-  /** 마스터 키를 패스키 PRF KEK로 감싼 것. 등록했을 때만 있다. */
-  passkey?: PasskeyUnlock;
 }
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
