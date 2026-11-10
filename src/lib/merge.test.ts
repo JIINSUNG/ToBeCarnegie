@@ -85,4 +85,25 @@ describe("mergeVaults", () => {
     expect(merged.version).toBe(2);
     expect(merged.lastBackupAt).toBe(100);
   });
+
+  it("나만의 문구·그룹 등록부·오늘의 다짐도 양쪽 걸 합쳐서 남긴다(동기화 때 사라지면 안 됨)", () => {
+    const local: Vault = {
+      version: 1,
+      people: [],
+      customWisdom: [{ id: "w1", text: "로컬 문구", createdAt: 1 }],
+      groupNames: ["헬스장"],
+      dailyIntention: { text: "로컬 다짐", date: "2026-01-01" },
+    };
+    const incoming: Vault = {
+      version: 1,
+      people: [],
+      customWisdom: [{ id: "w2", text: "원격 문구", createdAt: 2 }],
+      groupNames: ["동호회"],
+      dailyIntention: { text: "원격 다짐", date: "2026-01-02" },
+    };
+    const merged = mergeVaults(local, incoming);
+    expect(merged.customWisdom?.map((w) => w.id).sort()).toEqual(["w1", "w2"]);
+    expect(merged.groupNames?.sort()).toEqual(["동호회", "헬스장"]);
+    expect(merged.dailyIntention).toEqual({ text: "원격 다짐", date: "2026-01-02" });
+  });
 });

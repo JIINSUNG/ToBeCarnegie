@@ -2,7 +2,7 @@
 // 백업 복원(합치기)과 2단계 Firebase 동기화가 공용으로 쓴다.
 // id가 있는 항목(notes/gifts/anniversaries)은 id 기준으로, id가 없는 단순 목록(likes 등)은
 // 합집합으로 합친다 — 두 기기에서 각자 추가한 내용이 한쪽만 "더 최신"이라고 통째로 사라지지 않게.
-import type { Anniversary, Gift, Intention, Note, Person, Vault } from "../types";
+import type { Anniversary, CustomWisdom, DailyIntention, Gift, Intention, Note, Person, Vault } from "../types";
 
 function mergeById<T extends { id: string; updatedAt: number }>(a: T[], b: T[]): T[] {
   const byId = new Map<string, T>();
@@ -58,6 +58,21 @@ function mergePerson(a: Person, b: Person): Person {
   };
 }
 
+/** id로 중복만 빼고 합친다 — 내용이 바뀌지 않는(쓰고 나면 안 고치는) 항목용. */
+function mergeByIdUnion<T extends { id: string }>(a: T[], b: T[]): T[] {
+  const byId = new Map<string, T>();
+  for (const item of a) byId.set(item.id, item);
+  for (const item of b) if (!byId.has(item.id)) byId.set(item.id, item);
+  return [...byId.values()];
+}
+
+/** "오늘의 다짐"은 기기당 하나뿐이라 updatedAt이 없다 — date가 더 최근인(더 늦은) 쪽을 남긴다. */
+function mergeDailyIntention(a?: DailyIntention, b?: DailyIntention): DailyIntention | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return a.date >= b.date ? a : b;
+}
+
 export function mergeVaults(local: Vault, incoming: Vault): Vault {
   const byId = new Map<string, Person>();
   for (const person of local.people) byId.set(person.id, person);
@@ -67,10 +82,16 @@ export function mergeVaults(local: Vault, incoming: Vault): Vault {
   }
 
   const lastBackupAt = Math.max(local.lastBackupAt ?? 0, incoming.lastBackupAt ?? 0) || undefined;
+  const customWisdom = mergeByIdUnion<CustomWisdom>(local.customWisdom ?? [], incoming.customWisdom ?? []);
+  const groupNames = mergeStringList(local.groupNames, incoming.groupNames);
+  const dailyIntention = mergeDailyIntention(local.dailyIntention, incoming.dailyIntention);
 
   return {
     version: Math.max(local.version, incoming.version),
     people: [...byId.values()].sort((a, b) => a.createdAt - b.createdAt),
     ...(lastBackupAt ? { lastBackupAt } : {}),
+    ...(customWisdom.length ? { customWisdom } : {}),
+    ...(groupNames.length ? { groupNames } : {}),
+    ...(dailyIntention ? { dailyIntention } : {}),
   };
 }
