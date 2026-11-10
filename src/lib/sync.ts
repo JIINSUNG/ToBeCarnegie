@@ -45,12 +45,17 @@ function getDb(): Firestore {
   return dbInstance;
 }
 
-/** 홈 화면에 설치해서 standalone(앱처럼 전체화면)으로 떠 있는 중인지. PWA에서는
- * signInWithPopup이 띄운 창이 원래 창과 제대로 안 이어져서(opener 관계가 없어짐) 로그인을 마쳐도
- * 영영 안 끝나는 경우가 많다 — 그래서 이럴 땐 팝업 대신 전체 화면 리다이렉트 방식을 쓴다. */
+/** 홈 화면에 설치해서 standalone(앱처럼 전체화면)으로 떠 있는 중인지. 일부 환경(특히 iOS의 홈
+ * 화면 추가 PWA)에서는 signInWithPopup이 띄운 창이 원래 창과 제대로 안 이어져서 로그인을 마쳐도
+ * 안 끝나거나 팝업 자체가 막히는데, 안드로이드 Chrome PWA 등에서는 멀쩡히 되는 경우도 많다 —
+ * 그래서 standalone이라고 무조건 리다이렉트로 보내지 않고, 팝업을 먼저 시도해본다. */
 function isStandalonePwa(): boolean {
   if (window.matchMedia?.("(display-mode: standalone)").matches) return true;
   return (navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
+function errorCode(err: unknown): string | null {
+  return typeof err === "object" && err !== null && "code" in err ? String((err as { code: unknown }).code) : null;
 }
 
 /** 구글 계정으로 로그인하고 uid를 돌려준다(이미 로그인돼 있으면 팝업 없이 그대로 씀).
@@ -65,7 +70,16 @@ export async function signInOwner(allowRedirect = true): Promise<string> {
   // 다 정해질 때까지 기다린다(이미 로그인돼 있으면 거의 즉시 끝남).
   await auth.authStateReady();
   if (auth.currentUser) return auth.currentUser.uid;
-  if (isStandalonePwa()) {
+
+  try {
+    const { user } = await signInWithPopup(auth, new GoogleAuthProvider());
+    return user.uid;
+  } catch (err) {
+    const code = errorCode(err);
+    // 팝업이 아예 못 뜨는 경우에만 리다이렉트로 대체한다(standalone 환경 한정) — 사용자가 로그인
+    // 창을 스스로 닫은 경우 등은 그대로 실패로 보여준다.
+    const popupBlocked = code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment";
+    if (!popupBlocked || !isStandalonePwa()) throw err;
     if (!allowRedirect) throw { code: "auth/redirect-failed" };
     // 로그인만 하고 끝난 게 아니라 이 동기화(받아오기·올리기)까지 하려던 거였다는 걸 남겨둔다 —
     // 리다이렉트로 돌아와서 잠금을 풀면 session.tsx가 이 값을 보고 자동으로 마저 동기화한다.
@@ -76,8 +90,14 @@ export async function signInOwner(allowRedirect = true): Promise<string> {
     // 중으로 처리해서 "실패" 취급하지 않는다).
     throw { code: "auth/redirect-in-progress" };
   }
-  const { user } = await signInWithPopup(auth, new GoogleAuthProvider());
-  return user.uid;
+}
+
+/** 지금 로그인된 상태인지(팝업/리다이렉트 없이 조용히 확인). 자동 동기화가 로그인 안 한
+ * 사람에게 갑자기 로그인 창을 띄우지 않고 "이미 로그인돼 있을 때만" 조용히 돌게 하는 데 쓴다. */
+export async function isSignedIn(): Promise<boolean> {
+  const auth = getAuthInstance();
+  await auth.authStateReady();
+  return !!auth.currentUser;
 }
 
 export async function pullStoredVault(uid: string): Promise<StoredVault | null> {

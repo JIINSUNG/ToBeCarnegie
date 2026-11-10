@@ -264,16 +264,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [vault, masterKey, wraps, persist]
   );
 
-  // PWA에서 리다이렉트로 로그인만 하고 돌아왔을 때(lib/sync.ts가 markSyncRedirectPending로
-  // 남겨둔 표시), 잠금을 풀자마자 동기화(받아오기·올리기)까지 자동으로 마저 한다 — 안 그러면
-  // "동기화" 버튼을 한 번 더 눌러야 한다는 걸 몰라서 데이터가 안 맞춰진 것처럼 보인다.
+  // 잠금을 풀 때마다(=접속할 때마다) 동기화를 자동으로 한다. 두 경우가 있다:
+  // 1) PWA에서 리다이렉트로 로그인만 하고 돌아왔을 때(lib/sync.ts가 markSyncRedirectPending로
+  //    남겨둔 표시) — 동기화(받아오기·올리기)까지 마저 한다. 안 그러면 "동기화" 버튼을 한 번
+  //    더 눌러야 한다는 걸 몰라서 데이터가 안 맞춰진 것처럼 보인다.
+  // 2) 이미 로그인된 상태로 다시 들어왔을 때 — 매번 손으로 "지금 동기화"를 안 눌러도 되게 조용히
+  //    돌린다. 아직 로그인 안 한 사람에겐 갑자기 로그인 창을 띄우지 않는다(isSignedIn이 false면
+  //    그냥 건너뜀).
   const syncNowRef = useRef(syncNow);
   useEffect(() => {
     syncNowRef.current = syncNow;
   }, [syncNow]);
   useEffect(() => {
-    if (status !== "unlocked" || !isSyncConfigured() || !consumeSyncRedirectPending()) return;
-    const timer = setTimeout(() => void syncNowRef.current(true), 0);
+    if (status !== "unlocked" || !isSyncConfigured()) return;
+    const wasRedirectPending = consumeSyncRedirectPending();
+    const timer = setTimeout(async () => {
+      if (wasRedirectPending) {
+        void syncNowRef.current(true);
+        return;
+      }
+      const { isSignedIn } = await loadSync();
+      if (await isSignedIn()) void syncNowRef.current(true);
+    }, 0);
     return () => clearTimeout(timer);
     // syncNow 자체가 아니라 "잠금이 풀린 순간"에만 반응해야 하므로(안 그러면 vault가 바뀔 때마다
     // syncNow 참조가 새로 생겨 이 effect가 계속 다시 실행된다) status만 의존성으로 둔다.
