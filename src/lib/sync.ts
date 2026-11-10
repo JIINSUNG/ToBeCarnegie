@@ -100,6 +100,13 @@ export async function isSignedIn(): Promise<boolean> {
   return !!auth.currentUser;
 }
 
+/** 지금 로그인된 uid(없으면 null) — 팝업/리다이렉트 없이 조용히 확인만 한다. */
+export async function getCurrentUid(): Promise<string | null> {
+  const auth = getAuthInstance();
+  await auth.authStateReady();
+  return auth.currentUser?.uid ?? null;
+}
+
 export async function pullStoredVault(uid: string): Promise<StoredVault | null> {
   const snap = await getDoc(doc(getDb(), VAULTS_COLLECTION, uid));
   return snap.exists() ? (snap.data() as StoredVault) : null;

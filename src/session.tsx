@@ -275,32 +275,90 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [vault, masterKey, wraps, persist]
   );
 
-  // 잠금을 풀 때마다(=접속할 때마다) 동기화를 자동으로 한다. 두 경우가 있다:
-  // 1) PWA에서 리다이렉트로 로그인만 하고 돌아왔을 때(lib/sync.ts가 markSyncRedirectPending로
-  //    남겨둔 표시) — 동기화(받아오기·올리기)까지 마저 한다. 안 그러면 "동기화" 버튼을 한 번
-  //    더 눌러야 한다는 걸 몰라서 데이터가 안 맞춰진 것처럼 보인다.
-  // 2) 이미 로그인된 상태로 다시 들어왔을 때 — 매번 손으로 "지금 동기화"를 안 눌러도 되게 조용히
-  //    돌린다. 아직 로그인 안 한 사람에겐 갑자기 로그인 창을 띄우지 않는다(isSignedIn이 false면
-  //    그냥 건너뜀).
+  // PWA에서 리다이렉트로 로그인만 하고 돌아왔을 때(lib/sync.ts가 markSyncRedirectPending로 남겨둔
+  // 표시), 잠금을 풀자마자 동기화(받아오기·올리기)까지 자동으로 마저 한다 — 안 그러면 "동기화"
+  // 버튼을 한 번 더 눌러야 한다는 걸 몰라서 데이터가 안 맞춰진 것처럼 보인다. 이미 로그인된 상태로
+  // 다시 들어온 보통의 경우는 아래 실시간 구독/자동 올리기가 대신 처리한다.
   const syncNowRef = useRef(syncNow);
   useEffect(() => {
     syncNowRef.current = syncNow;
   }, [syncNow]);
   useEffect(() => {
-    if (status !== "unlocked" || !isSyncConfigured()) return;
-    const wasRedirectPending = consumeSyncRedirectPending();
-    const timer = setTimeout(async () => {
-      if (wasRedirectPending) {
-        void syncNowRef.current(true);
-        return;
-      }
-      const { isSignedIn } = await loadSync();
-      if (await isSignedIn()) void syncNowRef.current(true);
-    }, 0);
+    if (status !== "unlocked" || !isSyncConfigured() || !consumeSyncRedirectPending()) return;
+    const timer = setTimeout(() => void syncNowRef.current(true), 0);
     return () => clearTimeout(timer);
-    // syncNow 자체가 아니라 "잠금이 풀린 순간"에만 반응해야 하므로(안 그러면 vault가 바뀔 때마다
-    // syncNow 참조가 새로 생겨 이 effect가 계속 다시 실행된다) status만 의존성으로 둔다.
   }, [status]);
+
+  // 로그인된 상태로 쓰는 동안은 클라우드 문서를 실시간 구독해서, 다른 기기가 올린 내용이 거의
+  // 바로 반영되게 한다. updatedAt을 기억해뒀다가 "방금 내가 직접 올린 것"이 메아리처럼 다시
+  // 돌아오는 건 무시해서(무한 루프 방지), 다른 기기가 올린 진짜 변경만 받아 합친다.
+  const lastSyncedUpdatedAtRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (status !== "unlocked" || !isSyncConfigured() || !masterKey || !wraps) return;
+    const unsubRef: { current: (() => void) | undefined } = { current: undefined };
+    const cancelledRef = { current: false };
+    void (async () => {
+      const { getCurrentUid, subscribeStoredVault } = await loadSync();
+      const uid = await getCurrentUid();
+      if (!uid || cancelledRef.current) return;
+      unsubRef.current = subscribeStoredVault(uid, (remoteStored) => {
+        if (!remoteStored || remoteStored.updatedAt === lastSyncedUpdatedAtRef.current) return;
+        void (async () => {
+          try {
+            const remoteVault = await decryptWithKey<Vault>(masterKey, { iv: remoteStored.iv, cipher: remoteStored.cipher });
+            lastSyncedUpdatedAtRef.current = remoteStored.updatedAt;
+            setVault((prev) => {
+              if (!prev) return prev;
+              const merged = mergeVaults(prev, remoteVault);
+              void persist(merged, masterKey, wraps);
+              return merged;
+            });
+            setLastSyncedAt(Date.now());
+          } catch {
+            // 다른 기기가 다른 암호로 만든 Vault라 복호화가 안 되는 등 — 실시간 구독 중에 매번
+            // 에러를 띄우면 거슬리니 조용히 넘어간다. 수동 "지금 동기화"를 누르면 그때 에러가 뜬다.
+          }
+        })();
+      });
+    })();
+    return () => {
+      cancelledRef.current = true;
+      unsubRef.current?.();
+    };
+  }, [status, masterKey, wraps, persist]);
+
+  // 로컬에서 바뀐 내용은 잠깐(2초) 더 안 바뀌면 자동으로 올린다 — 기기마다 "지금 동기화"를 직접
+  // 누를 필요 없이 서로 거의 실시간으로 맞춰지게.
+  const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (status !== "unlocked" || !isSyncConfigured() || !vault || !masterKey || !wraps) return;
+    if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+    pushTimerRef.current = setTimeout(() => {
+      void (async () => {
+        const { getCurrentUid, pushStoredVault } = await loadSync();
+        const uid = await getCurrentUid();
+        if (!uid) return;
+        const blob = await encryptWithKey(masterKey, vault);
+        const updatedAt = Date.now();
+        lastSyncedUpdatedAtRef.current = updatedAt;
+        try {
+          await pushStoredVault(uid, { iv: blob.iv, cipher: blob.cipher, updatedAt, passphrase: wraps.passphrase });
+          setLastSyncedAt(updatedAt);
+          try {
+            localStorage.setItem(LAST_SYNCED_KEY, String(updatedAt));
+          } catch {
+            // 시크릿 모드 등 localStorage를 못 쓰는 환경 — 다음 동기화까지만 메모리에 남아도 괜찮다
+          }
+        } catch {
+          // 조용한 백그라운드 자동 올리기라 실패해도 화면에 에러를 안 띄운다 — 다음 변경 때 다시
+          // 시도되고, 안 되면 사용자가 "지금 동기화"를 직접 눌러서 원인을 볼 수 있다.
+        }
+      })();
+    }, 2000);
+    return () => {
+      if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+    };
+  }, [vault, status, masterKey, wraps]);
 
   const value = useMemo<SessionValue>(
     () => ({
