@@ -308,11 +308,16 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
           {person.name.slice(0, 1)}
         </div>
         <div style={{ flex: 1 }}>
-          <h1 style={{ fontSize: 22, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-            {person.name}
+          <h1 style={{ fontSize: 22, margin: 0, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+            <span style={{ wordBreak: "break-word" }}>{person.name}</span>
             {person.mbti && (
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent)", background: "var(--field)", borderRadius: 999, padding: "2px 8px" }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent)", background: "var(--field)", borderRadius: 999, padding: "2px 8px", flexShrink: 0, whiteSpace: "nowrap" }}>
                 {person.mbti}
+              </span>
+            )}
+            {person.gender && (
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--fg2)", background: "var(--field)", borderRadius: 999, padding: "2px 8px", flexShrink: 0, whiteSpace: "nowrap" }}>
+                {person.gender}
               </span>
             )}
           </h1>

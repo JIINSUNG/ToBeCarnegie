@@ -27,7 +27,7 @@ export function createPerson(vault: Vault, name: string, id: string = nanoid()):
 export function updatePerson(
   vault: Vault,
   id: string,
-  patch: Partial<Pick<Person, "name" | "birthday" | "birthdayYear" | "tags" | "lastContactAt" | "mbti" | "groups">>
+  patch: Partial<Pick<Person, "name" | "birthday" | "birthdayYear" | "tags" | "lastContactAt" | "mbti" | "gender" | "groups">>
 ): Vault {
   return {
     ...vault,

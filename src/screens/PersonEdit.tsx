@@ -14,8 +14,9 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
 
   const [name, setName] = useState(existing?.name ?? "");
   const [dateValue, setDateValue] = useState(existing?.birthday ? `${existing.birthdayYear ?? PLACEHOLDER_YEAR}-${existing.birthday}` : "");
-  const [yearUnknown, setYearUnknown] = useState(existing?.birthday ? !existing.birthdayYear : true);
+  const [yearUnknown, setYearUnknown] = useState(existing?.birthday ? !existing.birthdayYear : false);
   const [mbti, setMbti] = useState(existing?.mbti ?? "");
+  const [gender, setGender] = useState(existing?.gender ?? "");
   const [tags, setTags] = useState(existing?.tags.join(", ") ?? "");
   const [selectedGroups, setSelectedGroups] = useState<string[]>(existing?.groups ?? []);
   const [addingGroup, setAddingGroup] = useState(false);
@@ -85,6 +86,7 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
           birthday,
           birthdayYear,
           mbti: trimmedMbti || undefined,
+          gender: gender || undefined,
           tags: tagList,
           groups: groupList,
         })
@@ -96,7 +98,14 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
     const newId = nanoid();
     update((v) => {
       const withPerson = createPerson(v, trimmedName, newId);
-      return updatePerson(withPerson, newId, { birthday, birthdayYear, mbti: trimmedMbti || undefined, tags: tagList, groups: groupList });
+      return updatePerson(withPerson, newId, {
+        birthday,
+        birthdayYear,
+        mbti: trimmedMbti || undefined,
+        gender: gender || undefined,
+        tags: tagList,
+        groups: groupList,
+      });
     });
     onDone(newId);
   };
@@ -133,6 +142,30 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
         <span>MBTI (선택)</span>
         <input value={mbti} onChange={(e) => setMbti(e.target.value)} placeholder="INTJ" style={inputStyle} maxLength={4} />
       </label>
+
+      <div style={fieldStyle}>
+        <span>성별 (선택)</span>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {["여성", "남성", "기타"].map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGender((prev) => (prev === g ? "" : g))}
+              aria-pressed={gender === g}
+              style={{
+                fontSize: 12.5,
+                padding: "6px 12px",
+                borderRadius: 999,
+                border: "1px solid var(--line)",
+                background: gender === g ? "var(--accent)" : "var(--field)",
+                color: gender === g ? "var(--accent-fg)" : "var(--fg2)",
+              }}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <label style={fieldStyle}>
         <span>태그 (선택, 쉼표로 구분)</span>

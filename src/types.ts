@@ -45,6 +45,8 @@ export interface Person {
   birthdayYear?: number;
   /** "INTJ" 같은 4글자 MBTI (대문자). */
   mbti?: string;
+  /** 자유 입력(예: 여성/남성/기타) — 선택 사항, 강제하지 않는다. */
+  gender?: string;
   tags: string[];
   /** 태그와 별개로, 사람을 묶어서 관리하는 그룹(가족/직장 등). 자유 목록, PersonEdit에서 고른다. */
   groups?: string[];
