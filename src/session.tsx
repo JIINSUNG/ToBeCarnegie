@@ -42,6 +42,16 @@ async function resolveMasterKey(cloud: CloudVault, current: CryptoKey): Promise<
   return importKeyRaw(cloud.masterKeyB64);
 }
 
+/** 마스터 키를 클라우드 쪽으로 갈아탔으면(effectiveKey !== masterKey), 로컬에 저장된 "패스프레이즈로
+ * 감싼 키"도 새 마스터 키를 감싸도록 다시 만든다. 이걸 빼먹으면 로컬엔 내용은 새 키로 암호화돼
+ * 있는데 감싸진 키는 옛날 키 그대로 남아서, 다음에 암호를 넣으면 그 옛날 키가 풀리고 → 그걸로
+ * 새 내용을 복호화하려다 실패해서 "암호가 맞지 않아요"가 뜬다(실제로 암호는 맞았는데). */
+async function rewrapIfAdopted(effectiveKey: CryptoKey, masterKey: CryptoKey, wraps: Wraps, kek: CryptoKey): Promise<Wraps> {
+  if (effectiveKey === masterKey) return wraps;
+  const wrapped = await wrapKey(kek, effectiveKey);
+  return { passphrase: { ...wraps.passphrase, iv: wrapped.iv, cipher: wrapped.cipher } };
+}
+
 const LAST_SYNCED_KEY = "hr-last-synced-at";
 
 interface Wraps {
@@ -72,6 +82,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [masterKey, setMasterKey] = useState<CryptoKey | null>(null);
   const [wraps, setWraps] = useState<Wraps | null>(null);
+  // 패스프레이즈에서 뽑은 KEK(이 기기 로컬 전용) — 클라우드에서 다른 마스터 키를 받아들일 때
+  // (resolveMasterKey), 그 새 키를 이 기기 암호로 다시 감싸서 로컬에 저장하는 데 필요하다.
+  // 평문 패스프레이즈 자체는 저장 안 하고, 파생된 이 키만 메모리에 둔다(잠그면 버려짐).
+  const [kek, setKek] = useState<CryptoKey | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(() => {
     try {
@@ -111,6 +125,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       await requestPersistence();
       setMasterKey(masterKey);
       setWraps(w);
+      setKek(kek);
       setVault(newVault);
       setError(null);
       setStatus("unlocked");
@@ -126,6 +141,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const decrypted = await decryptWithKey<Vault>(masterKey, { iv: stored.iv, cipher: stored.cipher });
       setMasterKey(masterKey);
       setWraps({ passphrase: stored.passphrase });
+      setKek(kek);
       setVault(decrypted);
       setError(null);
       setStatus("unlocked");
@@ -151,6 +167,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const lock = useCallback(() => {
     setMasterKey(null);
     setWraps(null);
+    setKek(null);
     setVault(null);
     setError(null);
     setStatus("locked");
@@ -229,7 +246,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
    * 않는다 — 안 그러면 일부 환경에서 리다이렉트→앱→리다이렉트 무한 루프가 될 수 있다. */
   const syncNow = useCallback(
     async (auto = false): Promise<boolean> => {
-      if (!vault || !masterKey || !wraps) return false;
+      if (!vault || !masterKey || !wraps || !kek) return false;
       setSyncStatus("syncing");
       try {
         const { signInOwner, pullStoredVault, pushStoredVault } = await loadSync();
@@ -249,8 +266,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           const remoteVault = await decryptWithKey<Vault>(effectiveKey, { iv: cloud.iv, cipher: cloud.cipher });
           finalVault = mergeVaults(vault, remoteVault);
         }
-        await persist(finalVault, effectiveKey, wraps);
+        const effectiveWraps = await rewrapIfAdopted(effectiveKey, masterKey, wraps, kek);
+        await persist(finalVault, effectiveKey, effectiveWraps);
         if (effectiveKey !== masterKey) setMasterKey(effectiveKey);
+        if (effectiveWraps !== wraps) setWraps(effectiveWraps);
         setVault(finalVault);
         const blob = await encryptWithKey(effectiveKey, finalVault);
         const masterKeyB64 = await exportKeyRaw(effectiveKey);
@@ -272,7 +291,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return false;
       }
     },
-    [vault, masterKey, wraps, persist]
+    [vault, masterKey, wraps, kek, persist]
   );
 
   // PWA에서 리다이렉트로 로그인만 하고 돌아왔을 때(lib/sync.ts가 markSyncRedirectPending로 남겨둔
@@ -293,7 +312,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // 바로 반영되게 한다. updatedAt을 기억해뒀다가 "방금 내가 직접 올린 것"이 메아리처럼 다시
   // 돌아오는 건 무시해서(무한 루프 방지), 다른 기기가 올린 진짜 변경만 받아 합친다.
   useEffect(() => {
-    if (status !== "unlocked" || !isSyncConfigured() || !masterKey || !wraps) return;
+    if (status !== "unlocked" || !isSyncConfigured() || !masterKey || !wraps || !kek) return;
     const unsubRef: { current: (() => void) | undefined } = { current: undefined };
     const cancelledRef = { current: false };
     void (async () => {
@@ -306,12 +325,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           try {
             const effectiveKey = await resolveMasterKey(cloud, masterKey);
             const remoteVault = await decryptWithKey<Vault>(effectiveKey, { iv: cloud.iv, cipher: cloud.cipher });
+            const effectiveWraps = await rewrapIfAdopted(effectiveKey, masterKey, wraps, kek);
             lastSyncedUpdatedAtRef.current = cloud.updatedAt;
             if (effectiveKey !== masterKey) setMasterKey(effectiveKey);
+            if (effectiveWraps !== wraps) setWraps(effectiveWraps);
             setVault((prev) => {
               if (!prev) return prev;
               const merged = mergeVaults(prev, remoteVault);
-              void persist(merged, effectiveKey, wraps);
+              void persist(merged, effectiveKey, effectiveWraps);
               return merged;
             });
             setLastSyncedAt(Date.now());
@@ -326,7 +347,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       cancelledRef.current = true;
       unsubRef.current?.();
     };
-  }, [status, masterKey, wraps, persist]);
+  }, [status, masterKey, wraps, kek, persist]);
 
   // 로컬에서 바뀐 내용은 잠깐(2초) 더 안 바뀌면 자동으로 올린다 — 기기마다 "지금 동기화"를 직접
   // 누를 필요 없이 서로 거의 실시간으로 맞춰지게.
