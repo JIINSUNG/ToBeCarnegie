@@ -1,11 +1,12 @@
 // 홈 화면 하단에 고정되는 안드로이드 스타일 탭바. 사람 상세·수정처럼 안으로 들어간 화면에서는
 // (각자 자기 "← 목록"/"취소"로 돌아가니) 숨기고, 최상위 화면들에서만 보여준다.
-export type TabKey = "home" | "people" | "groups" | "briefing" | "settings";
+export type TabKey = "home" | "people" | "groups" | "quotes" | "briefing" | "settings";
 
 const TABS: [TabKey, string, string][] = [
   ["home", "🏠", "홈"],
   ["people", "👤", "사람"],
   ["groups", "👥", "그룹"],
+  ["quotes", "💬", "글귀"],
   ["briefing", "📋", "브리핑"],
   ["settings", "⚙️", "설정"],
 ];

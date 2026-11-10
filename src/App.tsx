@@ -7,6 +7,7 @@ import { PersonCard } from "./screens/PersonCard";
 import { PersonEdit } from "./screens/PersonEdit";
 import { Briefing } from "./screens/Briefing";
 import { Settings } from "./screens/Settings";
+import { Quotes } from "./screens/Quotes";
 import { TabBar, TAB_BAR_HEIGHT, type TabKey } from "./components/TabBar";
 
 type View =
@@ -15,12 +16,13 @@ type View =
   | { name: "groups" }
   | { name: "card"; id: string }
   | { name: "edit"; id: string | null }
+  | { name: "quotes" }
   | { name: "briefing" }
   | { name: "settings" };
 
 /** card/edit처럼 안으로 들어간 화면이 아니라, 하단 탭에 직접 대응되는 최상위 화면인지. */
 function isTabView(name: View["name"]): name is TabKey {
-  return name === "home" || name === "people" || name === "groups" || name === "briefing" || name === "settings";
+  return name === "home" || name === "people" || name === "groups" || name === "quotes" || name === "briefing" || name === "settings";
 }
 
 function Gate() {
@@ -78,6 +80,8 @@ function Gate() {
             onCancel={() => setView(view.id ? { name: "card", id: view.id } : { name: "people" })}
           />
         );
+      case "quotes":
+        return <Quotes onBack={() => setView({ name: "home" })} />;
       case "briefing":
         return (
           <Briefing

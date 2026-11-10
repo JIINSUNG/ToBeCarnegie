@@ -1,0 +1,175 @@
+import { useState } from "react";
+import { useSession } from "../session";
+import { addCustomWisdom, removeCustomWisdom } from "../lib/people";
+import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
+import type { CustomWisdom } from "../types";
+
+function formatDate(ts: number) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function Quotes({ onBack }: { onBack: () => void }) {
+  const { vault, update } = useSession();
+  const quotes: CustomWisdom[] = vault?.customWisdom ?? [];
+  const [textDraft, setTextDraft] = useState("");
+  const [sourceDraft, setSourceDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [reflectIndex, setReflectIndex] = useState(() => (quotes.length ? Math.floor(Math.random() * quotes.length) : null));
+
+  const pickAnother = () => {
+    if (quotes.length <= 1) return;
+    let idx = Math.floor(Math.random() * quotes.length);
+    if (idx === reflectIndex) idx = (idx + 1) % quotes.length;
+    setReflectIndex(idx);
+  };
+
+  const handleAdd = () => {
+    const text = textDraft.trim();
+    if (!text) return;
+    const reason = checkSensitive(text) ?? checkSensitive(sourceDraft);
+    if (reason) {
+      setError(BLOCK_REASON_LABEL[reason]);
+      return;
+    }
+    update((v) => addCustomWisdom(v, text, sourceDraft.trim() || undefined));
+    setTextDraft("");
+    setSourceDraft("");
+    setError(null);
+    setReflectIndex(quotes.length);
+  };
+
+  const handleRemove = (id: string) => {
+    update((v) => removeCustomWisdom(v, id));
+    setReflectIndex(null);
+  };
+
+  const reflecting = reflectIndex != null ? quotes[reflectIndex] : undefined;
+
+  return (
+    <main style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <button type="button" onClick={onBack} style={linkStyle}>
+          ← 홈
+        </button>
+        <h1 style={{ fontSize: 18, margin: 0 }}>내 글귀</h1>
+        <span style={{ width: 40 }} />
+      </div>
+
+      {reflecting ? (
+        <div style={reflectBoxStyle}>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--accent-fg)", opacity: 0.85 }}>곱씹어보기</span>
+          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5, color: "var(--accent-fg)" }}>{reflecting.text}</p>
+          {reflecting.source && <p style={{ margin: 0, fontSize: 12.5, color: "var(--accent-fg)", opacity: 0.85 }}>— {reflecting.source}</p>}
+          {quotes.length > 1 && (
+            <button type="button" onClick={pickAnother} style={{ alignSelf: "flex-end", background: "none", border: "none", color: "var(--accent-fg)", opacity: 0.85, fontSize: 12.5, padding: 0 }}>
+              다른 글귀 →
+            </button>
+          )}
+        </div>
+      ) : (
+        <p style={{ color: "var(--muted)", fontSize: 14, textAlign: "center", marginTop: "6vh" }}>
+          책이나 사람에게서 들은 좋은 글귀를 적어두세요.
+          <br />
+          여기서 다시 꺼내 곱씹어 볼 수 있어요.
+        </p>
+      )}
+
+      <div style={sectionStyle}>
+        <h2 style={headingStyle}>글귀 추가</h2>
+        <label style={fieldStyle}>
+          <span>글귀</span>
+          <textarea
+            value={textDraft}
+            onChange={(e) => {
+              setTextDraft(e.target.value);
+              setError(null);
+            }}
+            placeholder="예: 인간관계의 비결은 상대의 입장에서 보는 것이다."
+            rows={2}
+            style={{ ...inputStyle, resize: "vertical" }}
+          />
+        </label>
+        <label style={fieldStyle}>
+          <span>출처 (선택 · 책이나 사람)</span>
+          <input
+            value={sourceDraft}
+            onChange={(e) => {
+              setSourceDraft(e.target.value);
+              setError(null);
+            }}
+            placeholder="예: 데일 카네기, 인간관계론"
+            style={inputStyle}
+          />
+        </label>
+        {error && <p style={{ color: "var(--warn)", fontSize: 13, margin: 0 }}>{error}</p>}
+        <button type="button" onClick={handleAdd} disabled={!textDraft.trim()} style={primaryBtnStyle}>
+          추가
+        </button>
+      </div>
+
+      {quotes.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {[...quotes]
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .map((q) => (
+              <div key={q.id} style={cardStyle}>
+                <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5 }}>{q.text}</p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ color: "var(--muted)", fontSize: 12 }}>
+                    {q.source ? `— ${q.source} · ` : ""}
+                    {formatDate(q.createdAt)}
+                  </span>
+                  <button type="button" onClick={() => handleRemove(q.id)} style={{ background: "none", border: "none", color: "var(--warn)", fontSize: 12.5, padding: 0 }}>
+                    삭제
+                  </button>
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
+    </main>
+  );
+}
+
+const linkStyle: React.CSSProperties = { background: "none", border: "none", color: "var(--fg2)", fontSize: 14, padding: 4 };
+const sectionStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+  padding: 14,
+  borderRadius: "var(--radius)",
+  border: "1px solid var(--line)",
+  background: "var(--card)",
+};
+const headingStyle: React.CSSProperties = { fontSize: 15, margin: 0 };
+const fieldStyle: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6, fontSize: 13, color: "var(--fg2)" };
+const inputStyle: React.CSSProperties = { padding: "11px 14px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--field)", fontSize: 16, color: "var(--fg)" };
+const primaryBtnStyle: React.CSSProperties = {
+  alignSelf: "flex-start",
+  padding: "9px 16px",
+  borderRadius: 999,
+  border: "none",
+  background: "var(--accent)",
+  color: "var(--accent-fg)",
+  fontSize: 13.5,
+  fontWeight: 600,
+};
+const reflectBoxStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  padding: 16,
+  borderRadius: 16,
+  background: "var(--accent)",
+};
+const cardStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+  padding: "14px 16px",
+  borderRadius: 16,
+  border: "1px solid var(--line)",
+  background: "var(--card)",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+};

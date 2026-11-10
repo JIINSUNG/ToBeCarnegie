@@ -8,8 +8,6 @@ import {
   type BackupFile,
 } from "../lib/backup";
 import { shouldRemindBackup } from "../lib/derive";
-import { addCustomWisdom, removeCustomWisdom } from "../lib/people";
-import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
 
 function downloadBackupFile(file: BackupFile) {
   const blob = new Blob([serializeBackupFile(file)], { type: "application/json" });
@@ -31,32 +29,13 @@ function timeAgo(ts: number): string {
 }
 
 export function Settings({ onBack }: { onBack: () => void }) {
-  const { vault, update, exportBackup, restoreBackup, syncConfigured, syncNow, syncStatus, lastSyncedAt, error: syncError } = useSession();
+  const { vault, exportBackup, restoreBackup, syncConfigured, syncNow, syncStatus, lastSyncedAt, error: syncError } = useSession();
   const [code, setCode] = useState("");
   const [pasteCode, setPasteCode] = useState("");
   const [incoming, setIncoming] = useState<BackupFile | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [wisdomDraft, setWisdomDraft] = useState("");
-  const [wisdomError, setWisdomError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleAddWisdom = () => {
-    const text = wisdomDraft.trim();
-    if (!text) return;
-    const reason = checkSensitive(text);
-    if (reason) {
-      setWisdomError(BLOCK_REASON_LABEL[reason]);
-      return;
-    }
-    update((v) => addCustomWisdom(v, text));
-    setWisdomDraft("");
-    setWisdomError(null);
-  };
-
-  const handleRemoveWisdom = (id: string) => {
-    update((v) => removeCustomWisdom(v, id));
-  };
 
   const handleSync = async () => {
     const ok = await syncNow();
@@ -142,39 +121,6 @@ export function Settings({ onBack }: { onBack: () => void }) {
             <span>또는 코드로 복사해서 옮기기</span>
             <textarea readOnly rows={3} value={code} style={{ ...inputStyle, fontSize: 16, fontFamily: "monospace" }} onFocus={(e) => e.currentTarget.select()} />
           </label>
-        )}
-      </section>
-
-      <section style={sectionStyle}>
-        <h2 style={headingStyle}>나만의 한마디 문구</h2>
-        <p style={hintStyle}>홈 화면 "오늘의 한마디"에 직접 쓴 문구도 섞여서 나와요.</p>
-        <label style={fieldStyle}>
-          <textarea
-            rows={2}
-            value={wisdomDraft}
-            onChange={(e) => {
-              setWisdomDraft(e.target.value);
-              setWisdomError(null);
-            }}
-            placeholder="예: 작은 약속도 꼭 지켜라."
-            style={{ ...inputStyle, fontSize: 16 }}
-          />
-        </label>
-        {wisdomError && <p style={{ color: "var(--warn)", fontSize: 13, margin: 0 }}>{wisdomError}</p>}
-        <button type="button" onClick={handleAddWisdom} disabled={!wisdomDraft.trim()} style={secondaryBtnStyle}>
-          추가
-        </button>
-        {(vault?.customWisdom ?? []).length > 0 && (
-          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
-            {(vault?.customWisdom ?? []).map((w) => (
-              <li key={w.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius)", background: "var(--field)" }}>
-                <span style={{ flex: 1, fontSize: 13.5 }}>{w.text}</span>
-                <button type="button" onClick={() => handleRemoveWisdom(w.id)} style={{ background: "none", border: "none", color: "var(--warn)", fontSize: 12.5, padding: 0 }}>
-                  삭제
-                </button>
-              </li>
-            ))}
-          </ul>
         )}
       </section>
 

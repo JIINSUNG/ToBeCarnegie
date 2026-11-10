@@ -70,6 +70,8 @@ export interface Person {
 export interface CustomWisdom {
   id: string;
   text: string;
+  /** 책이나 사람에게서 인용한 거면 그 출처 (예: "데일 카네기, 인간관계론"). 직접 쓴 말이면 생략. */
+  source?: string;
   createdAt: number;
 }
 

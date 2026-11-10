@@ -305,10 +305,15 @@ describe("people", () => {
   });
 
   it("addCustomWisdom/removeCustomWisdom으로 나만의 문구를 추가·삭제할 수 있다", () => {
-    let v = addCustomWisdom(emptyVault(), "작은 약속도 꼭 지켜라.", "w1");
-    expect(v.customWisdom).toEqual([{ id: "w1", text: "작은 약속도 꼭 지켜라.", createdAt: expect.any(Number) }]);
+    let v = addCustomWisdom(emptyVault(), "작은 약속도 꼭 지켜라.", undefined, "w1");
+    expect(v.customWisdom).toEqual([{ id: "w1", text: "작은 약속도 꼭 지켜라.", source: undefined, createdAt: expect.any(Number) }]);
     v = removeCustomWisdom(v, "w1");
     expect(v.customWisdom).toEqual([]);
+  });
+
+  it("addCustomWisdom에 출처를 같이 적으면 저장된다", () => {
+    const v = addCustomWisdom(emptyVault(), "인간관계의 비결은 상대의 입장에서 보는 것이다.", "데일 카네기, 인간관계론", "w2");
+    expect(v.customWisdom?.[0].source).toBe("데일 카네기, 인간관계론");
   });
 
   it("setDailyIntention/clearDailyIntention으로 오늘의 다짐을 적고 지울 수 있다", () => {

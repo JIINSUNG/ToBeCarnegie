@@ -311,8 +311,8 @@ export function isValidAnniversaryDate(value: string): boolean {
 }
 
 /** 홈 화면 "오늘의 한마디"에 섞여 나올 나만의 문구를 추가한다. */
-export function addCustomWisdom(vault: Vault, text: string, id: string = nanoid()): Vault {
-  const entry: CustomWisdom = { id, text, createdAt: Date.now() };
+export function addCustomWisdom(vault: Vault, text: string, source?: string, id: string = nanoid()): Vault {
+  const entry: CustomWisdom = { id, text, source: source || undefined, createdAt: Date.now() };
   return { ...vault, customWisdom: [...(vault.customWisdom ?? []), entry] };
 }
 
