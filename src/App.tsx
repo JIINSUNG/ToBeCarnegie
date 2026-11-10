@@ -8,7 +8,7 @@ import { PersonEdit } from "./screens/PersonEdit";
 import { Briefing } from "./screens/Briefing";
 import { Settings } from "./screens/Settings";
 import { Quotes } from "./screens/Quotes";
-import { TabBar, TAB_BAR_HEIGHT, type TabKey } from "./components/TabBar";
+import { TabBar, type TabKey } from "./components/TabBar";
 
 type View =
   | { name: "home" }
@@ -25,6 +25,27 @@ function isTabView(name: View["name"]): name is TabKey {
   return name === "home" || name === "people" || name === "groups" || name === "quotes" || name === "briefing" || name === "settings";
 }
 
+/** 화면 전체(body)가 아니라 이 가운데 영역만 스크롤되게 해서, 탭바와 각 화면 안의 sticky 헤더가
+ * 모바일 브라우저 주소창 접힘/펴짐에 흔들리지 않고 항상 제자리에 있게 한다. */
+function Shell({ children, tabBar }: { children: React.ReactNode; tabBar?: React.ReactNode }) {
+  return (
+    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          paddingTop: "env(safe-area-inset-top, 0px)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
+      >
+        {children}
+      </div>
+      {tabBar}
+    </div>
+  );
+}
+
 function Gate() {
   const { status } = useSession();
   const [view, setView] = useState<View>({ name: "home" });
@@ -38,7 +59,12 @@ function Gate() {
   }, [view.name, viewId]);
 
   if (status === "loading") return null;
-  if (status !== "unlocked") return <Lock />;
+  if (status !== "unlocked")
+    return (
+      <Shell>
+        <Lock />
+      </Shell>
+    );
 
   const showTabBar = isTabView(view.name);
 
@@ -95,14 +121,7 @@ function Gate() {
     }
   })();
 
-  if (!showTabBar) return screen;
-
-  return (
-    <>
-      <div style={{ paddingBottom: TAB_BAR_HEIGHT }}>{screen}</div>
-      <TabBar tab={view.name as TabKey} onChange={(tab) => setView({ name: tab } as View)} />
-    </>
-  );
+  return <Shell tabBar={showTabBar && <TabBar tab={view.name as TabKey} onChange={(tab) => setView({ name: tab } as View)} />}>{screen}</Shell>;
 }
 
 export default function App() {

@@ -49,12 +49,15 @@ body {
   min-height: 100dvh;
 }
 
+/* 헤더·탭바를 "화면 전체(body) 스크롤" 바깥에 둬서, 끝까지 스크롤해야만 겨우 나타나거나
+   모바일 브라우저 주소창이 접히고 펴지는 동안 잠깐씩 밀려 보이던 문제를 없앤다 — 대신 App.tsx가
+   #root 안에 "고정된 헤더/탭바 + 그 사이만 스크롤되는 영역"으로 된 레이아웃을 만든다. */
 #root {
   max-width: 480px;
   margin: 0 auto;
-  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
   padding-inline: 16px;
-  padding-block: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-bottom));
 }
 
 button,
