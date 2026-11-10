@@ -27,6 +27,7 @@ import { relationshipTemp, RELATIONSHIP_TEMP_LABEL, type RelationshipTemp } from
 import { pickWisdomForPerson } from "../lib/wisdom";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
 import type { Person } from "../types";
+import { stickyHeaderStyle } from "../lib/layout";
 
 const TEMP_COLOR: Record<RelationshipTemp, string> = {
   warm: "var(--accent)",
@@ -279,7 +280,7 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ ...stickyHeaderStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button type="button" onClick={onBack} style={linkStyle}>
           ← 목록
         </button>

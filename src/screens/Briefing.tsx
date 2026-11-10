@@ -1,5 +1,6 @@
 import { useSession } from "../session";
 import { buildBriefing } from "../lib/derive";
+import { stickyHeaderStyle } from "../lib/layout";
 
 export function Briefing({ onOpenPerson, onSettings, onBack }: { onOpenPerson: (id: string) => void; onSettings: () => void; onBack: () => void }) {
   const { vault } = useSession();
@@ -7,7 +8,7 @@ export function Briefing({ onOpenPerson, onSettings, onBack }: { onOpenPerson: (
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 20, paddingTop: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ ...stickyHeaderStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button type="button" onClick={onBack} style={linkStyle}>
           ← 홈
         </button>

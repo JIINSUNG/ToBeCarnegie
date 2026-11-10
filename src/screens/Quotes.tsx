@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSession } from "../session";
 import { addCustomWisdom, removeCustomWisdom } from "../lib/people";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
+import { stickyHeaderStyle } from "../lib/layout";
 import type { CustomWisdom } from "../types";
 
 function formatDate(ts: number) {
@@ -48,7 +49,7 @@ export function Quotes({ onBack }: { onBack: () => void }) {
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ ...stickyHeaderStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button type="button" onClick={onBack} style={linkStyle}>
           ← 홈
         </button>

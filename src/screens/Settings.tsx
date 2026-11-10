@@ -8,6 +8,7 @@ import {
   type BackupFile,
 } from "../lib/backup";
 import { shouldRemindBackup } from "../lib/derive";
+import { stickyHeaderStyle } from "../lib/layout";
 
 function downloadBackupFile(file: BackupFile) {
   const blob = new Blob([serializeBackupFile(file)], { type: "application/json" });
@@ -96,7 +97,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 20, paddingTop: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ ...stickyHeaderStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button type="button" onClick={onBack} style={linkStyle}>
           ← 홈
         </button>

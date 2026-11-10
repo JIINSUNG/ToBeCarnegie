@@ -3,6 +3,7 @@ import { useSession } from "../session";
 import { addGroupName, allGroups, deleteGroup, renameGroup, searchPeople } from "../lib/people";
 import { relationshipTemp, upcomingBirthdays, type RelationshipTemp } from "../lib/derive";
 import type { Person } from "../types";
+import { stickyHeaderStyle } from "../lib/layout";
 
 const TEMP_COLOR: Record<RelationshipTemp, string> = {
   warm: "var(--accent)",
@@ -149,7 +150,7 @@ export function People({
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ ...stickyHeaderStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button type="button" onClick={onBack} style={linkStyle}>
           ← 홈
         </button>

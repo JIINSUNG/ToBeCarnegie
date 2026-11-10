@@ -6,6 +6,7 @@ import { parseQuickEntry } from "../lib/parser";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
 import { pickRandomWisdom } from "../lib/wisdom";
 import { todayDateStr, upcomingAnniversaries, upcomingBirthdays } from "../lib/derive";
+import { stickyHeaderStyle } from "../lib/layout";
 
 const SOON_WINDOW_DAYS = 7;
 
@@ -85,7 +86,7 @@ export function Home({
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ ...stickyHeaderStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1 style={{ fontSize: 20, margin: 0 }}>관계노트</h1>
         <button
           type="button"

@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import { useSession } from "../session";
 import { addGroupName, allGroups, createPerson, findPerson, isValidBirthdayYear, isValidMbti, updatePerson } from "../lib/people";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
+import { stickyHeaderStyle } from "../lib/layout";
 
 /** 연도를 모를 때 달력을 띄우기 위한 자리표시 연도 — 2월 29일도 고를 수 있게 윤년으로 둔다. */
 const PLACEHOLDER_YEAR = 2000;
@@ -102,7 +103,7 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ ...stickyHeaderStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button type="button" onClick={onCancel} style={linkStyle}>
           취소
         </button>
