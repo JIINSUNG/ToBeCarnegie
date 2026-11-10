@@ -17,7 +17,7 @@ import {
   unwrapKey,
   wrapKey,
 } from "./lib/crypto";
-import { loadStoredVault, requestPersistence, saveStoredVault, type PassphraseUnlock, type StoredVault } from "./lib/storage";
+import { clearStoredVault, loadStoredVault, requestPersistence, saveStoredVault, type PassphraseUnlock, type StoredVault } from "./lib/storage";
 import type { CloudVault } from "./lib/sync";
 import { createBackupFile, restoreMerge, restoreOverwrite, type BackupFile } from "./lib/backup";
 import { mergeVaults } from "./lib/merge";
@@ -68,6 +68,7 @@ interface SessionValue {
   setup: (passphrase: string) => Promise<void>;
   unlock: (passphrase: string) => Promise<boolean>;
   lock: () => void;
+  resetDevice: () => Promise<void>;
   update: (fn: (v: Vault) => Vault) => void;
   exportBackup: () => Promise<BackupFile | null>;
   restoreBackup: (file: BackupFile, mode: "merge" | "overwrite") => Promise<boolean>;
@@ -171,6 +172,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setVault(null);
     setError(null);
     setStatus("locked");
+  }, []);
+
+  /** 암호가 기억이 안 나거나(혹은 예전 버그로 로컬 저장이 꼬여서) 계속 "암호가 맞지 않아요"만 뜰
+   * 때 쓰는 마지막 수단 — 이 기기의 로컬 기록만 지우고 새로 시작한다. 동기화를 켜둔 사람은 그 뒤에
+   * "지금 동기화"를 누르면 클라우드에 있던 내용을 그대로 받아올 수 있다(클라우드 쪽은 안 건드림). */
+  const resetDevice = useCallback(async () => {
+    await clearStoredVault();
+    setMasterKey(null);
+    setWraps(null);
+    setKek(null);
+    setVault(null);
+    setError(null);
+    setStatus("needs-setup");
   }, []);
 
   const update = useCallback(
@@ -394,12 +408,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setup,
       unlock,
       lock,
+      resetDevice,
       update,
       exportBackup,
       restoreBackup,
       syncNow,
     }),
-    [status, vault, error, syncStatus, lastSyncedAt, setup, unlock, lock, update, exportBackup, restoreBackup, syncNow]
+    [status, vault, error, syncStatus, lastSyncedAt, setup, unlock, lock, resetDevice, update, exportBackup, restoreBackup, syncNow]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
