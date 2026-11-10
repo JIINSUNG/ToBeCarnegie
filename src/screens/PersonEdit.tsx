@@ -1,29 +1,44 @@
 import { useState } from "react";
 import { nanoid } from "nanoid";
 import { useSession } from "../session";
-import { allGroups, createPerson, findPerson, isValidBirthday, isValidBirthdayYear, isValidMbti, updatePerson } from "../lib/people";
+import { addGroupName, allGroups, createPerson, findPerson, isValidBirthdayYear, isValidMbti, updatePerson } from "../lib/people";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
+
+/** 연도를 모를 때 달력을 띄우기 위한 자리표시 연도 — 2월 29일도 고를 수 있게 윤년으로 둔다. */
+const PLACEHOLDER_YEAR = 2000;
 
 export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone: (id: string) => void; onCancel: () => void }) {
   const { vault, update } = useSession();
   const existing = id && vault ? findPerson(vault, id) : undefined;
 
   const [name, setName] = useState(existing?.name ?? "");
-  const [birthday, setBirthday] = useState(existing?.birthday ?? "");
-  const [yearStr, setYearStr] = useState(existing?.birthdayYear ? String(existing.birthdayYear) : "");
-  const [yearUnknown, setYearUnknown] = useState(!existing?.birthdayYear);
+  const [dateValue, setDateValue] = useState(existing?.birthday ? `${existing.birthdayYear ?? PLACEHOLDER_YEAR}-${existing.birthday}` : "");
+  const [yearUnknown, setYearUnknown] = useState(existing?.birthday ? !existing.birthdayYear : true);
   const [mbti, setMbti] = useState(existing?.mbti ?? "");
   const [tags, setTags] = useState(existing?.tags.join(", ") ?? "");
-  const [groups, setGroups] = useState(existing?.groups?.join(", ") ?? "");
+  const [selectedGroups, setSelectedGroups] = useState<string[]>(existing?.groups ?? []);
+  const [addingGroup, setAddingGroup] = useState(false);
+  const [newGroupDraft, setNewGroupDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const existingGroups = vault ? allGroups(vault) : [];
-  const currentGroupList = groups.split(",").map((g) => g.trim()).filter(Boolean);
 
-  const toggleGroupSuggestion = (g: string) => {
-    const has = currentGroupList.includes(g);
-    const next = has ? currentGroupList.filter((x) => x !== g) : [...currentGroupList, g];
-    setGroups(next.join(", "));
+  const toggleGroup = (g: string) => {
+    setSelectedGroups((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+  };
+
+  const confirmAddGroup = () => {
+    const name = newGroupDraft.trim();
+    setAddingGroup(false);
+    setNewGroupDraft("");
+    if (!name) return;
+    const reason = checkSensitive(name);
+    if (reason) {
+      setError(BLOCK_REASON_LABEL[reason]);
+      return;
+    }
+    if (!existingGroups.includes(name)) update((v) => addGroupName(v, name));
+    setSelectedGroups((prev) => (prev.includes(name) ? prev : [...prev, name]));
   };
 
   const save = () => {
@@ -33,23 +48,24 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
       return;
     }
     const trimmedMbti = mbti.trim().toUpperCase();
-    const nameIssue = checkSensitive(trimmedName) ?? checkSensitive(tags) ?? checkSensitive(groups);
+    const nameIssue = checkSensitive(trimmedName) ?? checkSensitive(tags);
     if (nameIssue) {
       setError(BLOCK_REASON_LABEL[nameIssue]);
       return;
     }
-    if (birthday && !isValidBirthday(birthday)) {
-      setError("생일은 MM-DD 형식으로 적어주세요 (예: 03-15).");
-      return;
-    }
+    let birthday: string | undefined;
     let birthdayYear: number | undefined;
-    if (birthday && !yearUnknown) {
-      const y = Number(yearStr.trim());
-      if (!yearStr.trim() || !isValidBirthdayYear(y)) {
-        setError("태어난 연도를 올바르게 적거나, 모르면 '몰라요'를 체크해주세요.");
-        return;
+    if (dateValue) {
+      const [y, m, d] = dateValue.split("-");
+      birthday = `${m}-${d}`;
+      if (!yearUnknown) {
+        const year = Number(y);
+        if (!isValidBirthdayYear(year)) {
+          setError("태어난 연도가 올바르지 않아요.");
+          return;
+        }
+        birthdayYear = year;
       }
-      birthdayYear = y;
     }
     if (trimmedMbti && !isValidMbti(trimmedMbti)) {
       setError("MBTI는 INTJ처럼 4글자로 적어주세요.");
@@ -59,13 +75,13 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean);
-    const groupList = currentGroupList;
+    const groupList = selectedGroups;
 
     if (existing) {
       update((v) =>
         updatePerson(v, existing.id, {
           name: trimmedName,
-          birthday: birthday || undefined,
+          birthday,
           birthdayYear,
           mbti: trimmedMbti || undefined,
           tags: tagList,
@@ -79,7 +95,7 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
     const newId = nanoid();
     update((v) => {
       const withPerson = createPerson(v, trimmedName, newId);
-      return updatePerson(withPerson, newId, { birthday: birthday || undefined, birthdayYear, mbti: trimmedMbti || undefined, tags: tagList, groups: groupList });
+      return updatePerson(withPerson, newId, { birthday, birthdayYear, mbti: trimmedMbti || undefined, tags: tagList, groups: groupList });
     });
     onDone(newId);
   };
@@ -102,29 +118,15 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
       </label>
 
       <label style={fieldStyle}>
-        <span>생일 (선택, MM-DD)</span>
-        <input value={birthday} onChange={(e) => setBirthday(e.target.value)} placeholder="03-15" style={inputStyle} />
+        <span>생일 (선택)</span>
+        <input type="date" value={dateValue} onChange={(e) => setDateValue(e.target.value)} style={inputStyle} />
+        {dateValue && (
+          <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5 }}>
+            <input type="checkbox" checked={yearUnknown} onChange={(e) => setYearUnknown(e.target.checked)} />
+            태어난 연도는 몰라요 (월·일만 저장돼요)
+          </label>
+        )}
       </label>
-
-      {birthday && (
-        <label style={fieldStyle}>
-          <span>태어난 연도 (선택)</span>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <input
-              value={yearUnknown ? "" : yearStr}
-              onChange={(e) => setYearStr(e.target.value)}
-              disabled={yearUnknown}
-              placeholder="1992"
-              inputMode="numeric"
-              style={{ ...inputStyle, flex: 1, opacity: yearUnknown ? 0.5 : 1 }}
-            />
-            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, whiteSpace: "nowrap" }}>
-              <input type="checkbox" checked={yearUnknown} onChange={(e) => setYearUnknown(e.target.checked)} />
-              몰라요
-            </label>
-          </div>
-        </label>
-      )}
 
       <label style={fieldStyle}>
         <span>MBTI (선택)</span>
@@ -136,32 +138,64 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
         <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="대학동기, 헬스장" style={inputStyle} />
       </label>
 
-      <label style={fieldStyle}>
-        <span>그룹 (선택, 쉼표로 구분)</span>
-        <input value={groups} onChange={(e) => setGroups(e.target.value)} placeholder="가족, 직장" style={inputStyle} />
-        {existingGroups.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
-            {existingGroups.map((g) => (
-              <button
-                key={g}
-                type="button"
-                onClick={() => toggleGroupSuggestion(g)}
-                aria-pressed={currentGroupList.includes(g)}
-                style={{
-                  fontSize: 12.5,
-                  padding: "4px 10px",
-                  borderRadius: 999,
-                  border: "1px solid var(--line)",
-                  background: currentGroupList.includes(g) ? "var(--accent)" : "var(--field)",
-                  color: currentGroupList.includes(g) ? "var(--accent-fg)" : "var(--fg2)",
+      <div style={fieldStyle}>
+        <span>그룹 (선택)</span>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+          {existingGroups.map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => toggleGroup(g)}
+              aria-pressed={selectedGroups.includes(g)}
+              style={{
+                fontSize: 12.5,
+                padding: "6px 12px",
+                borderRadius: 999,
+                border: "1px solid var(--line)",
+                background: selectedGroups.includes(g) ? "var(--accent)" : "var(--field)",
+                color: selectedGroups.includes(g) ? "var(--accent-fg)" : "var(--fg2)",
+              }}
+            >
+              {g}
+            </button>
+          ))}
+          {addingGroup ? (
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                value={newGroupDraft}
+                onChange={(e) => setNewGroupDraft(e.target.value)}
+                placeholder="새 그룹 이름"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") confirmAddGroup();
+                  if (e.key === "Escape") {
+                    setAddingGroup(false);
+                    setNewGroupDraft("");
+                  }
                 }}
-              >
-                {g}
-              </button>
-            ))}
-          </div>
-        )}
-      </label>
+                onBlur={confirmAddGroup}
+                style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid var(--line)", background: "var(--card)", fontSize: 16, color: "var(--fg)", width: 120 }}
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAddingGroup(true)}
+              style={{
+                fontSize: 12.5,
+                padding: "6px 12px",
+                borderRadius: 999,
+                border: "1px dashed var(--line)",
+                background: "none",
+                color: "var(--accent)",
+              }}
+            >
+              + 새 그룹
+            </button>
+          )}
+        </div>
+        {existingGroups.length === 0 && !addingGroup && <p style={{ color: "var(--muted)", fontSize: 12.5, margin: 0 }}>아직 그룹이 없어요. &apos;+ 새 그룹&apos;으로 만들어보세요.</p>}
+      </div>
 
       {error && <p style={{ color: "var(--warn)", fontSize: 13, margin: 0 }}>{error}</p>}
     </main>

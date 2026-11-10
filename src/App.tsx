@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SessionProvider, useSession } from "./session";
 import { Lock } from "./screens/Lock";
 import { Home } from "./screens/Home";
@@ -26,6 +26,14 @@ function isTabView(name: View["name"]): name is TabKey {
 function Gate() {
   const { status } = useSession();
   const [view, setView] = useState<View>({ name: "home" });
+  const viewId = "id" in view ? view.id : null;
+
+  // 입력칸에 포커스가 남아있는 채로 화면을 넘기면(예: 새 사람 저장 → 상세로 이동), iOS Safari가
+  // 포커스 때문에 확대된 화면을 안 풀어줘서 다음 화면도 계속 확대돼 보인다 — 화면이 바뀌면
+  // 포커스를 강제로 떼서 확대를 풀어준다.
+  useEffect(() => {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+  }, [view.name, viewId]);
 
   if (status === "loading") return null;
   if (status !== "unlocked") return <Lock />;
