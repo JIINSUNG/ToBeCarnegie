@@ -289,6 +289,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (code === "auth/redirect-in-progress") return "구글 로그인 화면으로 이동할게요. 로그인하고 돌아오면 다시 '지금 동기화'를 눌러주세요.";
     if (code === "auth/redirect-failed")
       return "이 앱 화면에서는 구글 로그인이 잘 안 되는 것 같아요. 브라우저(Safari/Chrome)로 열어서 동기화해보세요.";
+    if (code === "invalid-argument") return "저장하는 데이터에 문제가 있었어요. 앱을 새로고침한 뒤 다시 시도해주세요.";
     if (code) return `동기화에 실패했어요. (${code})`;
     return "동기화에 실패했어요. (다른 기기와 다른 암호로 시작했을 수 있어요)";
   }
