@@ -216,7 +216,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (code === "auth/redirect-failed")
       return "이 앱 화면에서는 구글 로그인이 잘 안 되는 것 같아요. 브라우저(Safari/Chrome)로 열어서 동기화해보세요.";
     if (code === "invalid-argument") return "저장하는 데이터에 문제가 있었어요. 앱을 새로고침한 뒤 다시 시도해주세요.";
-    if (code) return `동기화에 실패했어요. (${code})`;
+    // 인터넷 연결 자체가 끊겨 있으면 code가 "0"처럼 의미 없는 값으로 오는 경우가 많다(파이어베이스
+    // 고유 코드가 아니라 브라우저/네트워크 계층에서 온 에러라서) — 이게 가장 흔하고 확인하기도
+    // 쉬우니 먼저 짚어준다.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return "인터넷 연결이 끊겨 있어요. 연결을 확인하고 다시 시도해주세요.";
+    // 알려진 파이어베이스 코드가 아니면("0" 같은 숫자 등) code보다 message/name이 더 쓸모 있다.
+    const detail =
+      typeof err === "object" && err !== null && "message" in err && typeof (err as { message: unknown }).message === "string"
+        ? (err as { message: string }).message
+        : typeof err === "object" && err !== null && "name" in err
+          ? String((err as { name: unknown }).name)
+          : code;
+    if (detail) return `동기화에 실패했어요. (${detail})`;
     return "동기화에 실패했어요. (다른 기기와 다른 암호로 시작했을 수 있어요)";
   }
 
