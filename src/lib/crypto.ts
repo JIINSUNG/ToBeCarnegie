@@ -83,3 +83,17 @@ export async function unwrapKey(kek: CryptoKey, blob: EncryptedBlob): Promise<Cr
   return crypto.subtle.importKey("raw", raw as BufferSource, "AES-GCM", true, ["encrypt", "decrypt"]);
 }
 
+/** 마스터 키를 그 자체로(감싸지 않고) base64로 꺼낸다 — 클라우드 동기화용. 기기별 패스프레이즈를
+ * 안 맞춰도 같은 구글 계정이면 이 값으로 바로 복호화할 수 있게 하는 대신, 그만큼 Firestore 접근
+ * 권한(firestore.rules)이 유일한 방어선이 된다(더 이상 서버가 "절대 복호화 불가능"은 아님 —
+ * 사용자가 그 트레이드오프를 받아들이기로 함). */
+export async function exportKeyRaw(key: CryptoKey): Promise<string> {
+  const raw = await crypto.subtle.exportKey("raw", key);
+  return toBase64(new Uint8Array(raw));
+}
+
+export async function importKeyRaw(b64: string): Promise<CryptoKey> {
+  const raw = fromBase64(b64);
+  return crypto.subtle.importKey("raw", raw as BufferSource, "AES-GCM", true, ["encrypt", "decrypt"]);
+}
+

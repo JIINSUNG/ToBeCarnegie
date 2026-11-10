@@ -4,23 +4,12 @@ import { useSession } from "../session";
 const MIN_LENGTH = 8;
 
 export function Lock() {
-  const { status, error, syncConfigured, setup, unlock, joinFromCloud } = useSession();
+  const { status, error, setup, unlock } = useSession();
   const isSetup = status === "needs-setup";
   const [pass, setPass] = useState("");
   const [confirm, setConfirm] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  const submitJoinFromCloud = async () => {
-    setLocalError(null);
-    if (!pass) {
-      setLocalError("클라우드에서 쓰던 암호를 입력해주세요.");
-      return;
-    }
-    setBusy(true);
-    await joinFromCloud(pass);
-    setBusy(false);
-  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -54,6 +43,11 @@ export function Lock() {
         <p style={{ color: "var(--muted)", fontSize: 14, margin: "6px 0 0" }}>
           {isSetup ? "이 기기에서 처음 쓰시는군요. 잠금 암호를 만들어주세요." : "암호를 입력해 잠금을 풀어주세요."}
         </p>
+        {isSetup && (
+          <p style={{ color: "var(--muted)", fontSize: 12.5, margin: "4px 0 0" }}>
+            이 암호는 이 기기만의 잠금이에요 — 다른 기기와 똑같이 맞출 필요 없어요. 설정에서 동기화를 켜면 기록은 자동으로 맞춰져요.
+          </p>
+        )}
       </div>
 
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -84,12 +78,6 @@ export function Lock() {
         </button>
       </form>
 
-      {isSetup && syncConfigured && (
-        <button type="button" onClick={submitJoinFromCloud} disabled={busy} style={secondaryButtonStyle}>
-          다른 기기에서 이미 쓰고 있어요 (구글 계정으로 불러오기)
-        </button>
-      )}
-
       {isSetup && (
         <p style={{ color: "var(--muted)", fontSize: 12.5, textAlign: "center", margin: 0 }}>
           이 암호를 잊으면 기록을 되돌릴 방법이 없어요. 꼭 기억할 수 있는 걸로 만들어주세요.
@@ -115,13 +103,4 @@ const buttonStyle: React.CSSProperties = {
   color: "var(--accent-fg)",
   fontSize: 16,
   fontWeight: 600,
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  padding: "12px 14px",
-  borderRadius: "var(--radius)",
-  border: "1px solid var(--line)",
-  background: "var(--card)",
-  color: "var(--fg)",
-  fontSize: 15,
 };

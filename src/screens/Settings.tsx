@@ -127,7 +127,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
       {syncConfigured && (
         <section style={sectionStyle}>
           <h2 style={headingStyle}>동기화</h2>
-          <p style={hintStyle}>구글 계정으로 다른 기기와 맞춰요. 여기서도 암호화된 채로만 오가요(처음엔 구글 로그인 창이 떠요).</p>
+          <p style={hintStyle}>구글 계정으로 다른 기기와 맞춰요(처음엔 구글 로그인 창이 떠요). 한 번만 켜두면 그다음부턴 기기마다 암호가 달라도 자동으로 맞춰져요.</p>
           <button type="button" onClick={handleSync} disabled={syncStatus === "syncing"} style={primaryBtnStyle}>
             {syncStatus === "syncing" ? "동기화 중…" : "지금 동기화"}
           </button>

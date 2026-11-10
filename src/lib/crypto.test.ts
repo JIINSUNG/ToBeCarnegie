@@ -3,7 +3,9 @@ import {
   decryptWithKey,
   deriveKey,
   encryptWithKey,
+  exportKeyRaw,
   generateMasterKey,
+  importKeyRaw,
   randomSalt,
   saltFromBase64,
   saltToBase64,
@@ -65,5 +67,22 @@ describe("key wrapping", () => {
     const masterKey = await generateMasterKey();
     const wrapped = await wrapKey(rightKek, masterKey);
     await expect(unwrapKey(wrongKek, wrapped)).rejects.toThrow();
+  });
+});
+
+describe("exportKeyRaw/importKeyRaw", () => {
+  it("마스터 키를 base64로 꺼냈다가 다시 불러와도 똑같이 동작한다 (패스프레이즈 없이 공유하는 용도)", async () => {
+    const masterKey = await generateMasterKey();
+    const b64 = await exportKeyRaw(masterKey);
+    const restored = await importKeyRaw(b64);
+    const blob = await encryptWithKey(masterKey, { shared: true });
+    expect(await decryptWithKey(restored, blob)).toEqual({ shared: true });
+  });
+
+  it("같은 키를 두 번 꺼내면 항상 같은 base64가 나온다(기기 간 키 비교에 씀)", async () => {
+    const masterKey = await generateMasterKey();
+    const a = await exportKeyRaw(masterKey);
+    const b = await exportKeyRaw(masterKey);
+    expect(a).toBe(b);
   });
 });

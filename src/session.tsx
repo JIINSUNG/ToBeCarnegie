@@ -8,7 +8,9 @@ import {
   decryptWithKey,
   deriveKey,
   encryptWithKey,
+  exportKeyRaw,
   generateMasterKey,
+  importKeyRaw,
   randomSalt,
   saltFromBase64,
   saltToBase64,
@@ -16,6 +18,7 @@ import {
   wrapKey,
 } from "./lib/crypto";
 import { loadStoredVault, requestPersistence, saveStoredVault, type PassphraseUnlock, type StoredVault } from "./lib/storage";
+import type { CloudVault } from "./lib/sync";
 import { createBackupFile, restoreMerge, restoreOverwrite, type BackupFile } from "./lib/backup";
 import { mergeVaults } from "./lib/merge";
 import { isSyncConfigured } from "./lib/sync-env";
@@ -28,6 +31,16 @@ const loadSync = () => import("./lib/sync");
 
 type Status = "loading" | "needs-setup" | "locked" | "unlocked";
 type SyncStatus = "idle" | "syncing" | "success" | "error";
+
+/** 클라우드 문서의 마스터 키가 내 것과 다르면(이 계정으로 처음 합류하는 기기라서), 클라우드 쪽을
+ * "이 계정의 진짜 키"로 받아들인다 — 패스프레이즈는 기기마다 달라도 되니, 어느 기기가 먼저
+ * 동기화했든 그 기기의 마스터 키로 전부 통일된다. 같으면 같은 객체를 그대로 돌려준다(상태 갱신을
+ * 괜히 유발하지 않게). */
+async function resolveMasterKey(cloud: CloudVault, current: CryptoKey): Promise<CryptoKey> {
+  const currentB64 = await exportKeyRaw(current);
+  if (cloud.masterKeyB64 === currentB64) return current;
+  return importKeyRaw(cloud.masterKeyB64);
+}
 
 const LAST_SYNCED_KEY = "hr-last-synced-at";
 
@@ -44,7 +57,6 @@ interface SessionValue {
   lastSyncedAt: number | null;
   setup: (passphrase: string) => Promise<void>;
   unlock: (passphrase: string) => Promise<boolean>;
-  joinFromCloud: (passphrase: string) => Promise<boolean>;
   lock: () => void;
   update: (fn: (v: Vault) => Vault) => void;
   exportBackup: () => Promise<BackupFile | null>;
@@ -70,6 +82,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       return null;
     }
   });
+  // "방금 내가 직접 올린 것"의 updatedAt — 실시간 구독이 그걸 메아리로 다시 받았을 때 무시해서
+  // 무한 루프를 막는 데 쓴다(syncNow·자동 올리기·실시간 구독 셋이 같이 쓴다).
+  const lastSyncedUpdatedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     loadStoredVault().then((stored) => {
@@ -129,28 +144,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return false;
       }
       return unlockFromStored(passphrase, stored);
-    },
-    [unlockFromStored]
-  );
-
-  /** 다른 기기에서 이미 동기화해둔 Vault가 있을 때, 이 기기는 새로 만들지 않고 그걸 받아 합류한다. */
-  const joinFromCloud = useCallback(
-    async (passphrase: string): Promise<boolean> => {
-      try {
-        const { signInOwner, pullStoredVault } = await loadSync();
-        const uid = await signInOwner();
-        const remote = await pullStoredVault(uid);
-        if (!remote) {
-          setError("클라우드에 저장된 백업이 아직 없어요.");
-          return false;
-        }
-        const ok = await unlockFromStored(passphrase, remote);
-        if (ok) await saveStoredVault(remote);
-        return ok;
-      } catch {
-        setError("클라우드에 연결하지 못했어요. 동기화 설정을 확인해주세요.");
-        return false;
-      }
     },
     [unlockFromStored]
   );
@@ -246,19 +239,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           signInOwner(!auto),
           new Promise<never>((_, reject) => setTimeout(() => reject({ code: "auth/timeout" }), 45000)),
         ]);
-        const remoteStored = await pullStoredVault(uid);
+        const cloud = await pullStoredVault(uid);
+        let effectiveKey = masterKey;
         let finalVault = vault;
-        if (remoteStored) {
-          const remoteVault = await decryptWithKey<Vault>(masterKey, { iv: remoteStored.iv, cipher: remoteStored.cipher });
+        if (cloud) {
+          // 이 계정으로 처음 합류하는 기기면(내 패스프레이즈로 감싼 로컬 키와 클라우드 키가
+          // 다르면), 클라우드 쪽 키로 갈아탄다 — 패스프레이즈를 안 맞춰도 합류되는 이유.
+          effectiveKey = await resolveMasterKey(cloud, masterKey);
+          const remoteVault = await decryptWithKey<Vault>(effectiveKey, { iv: cloud.iv, cipher: cloud.cipher });
           finalVault = mergeVaults(vault, remoteVault);
         }
-        await persist(finalVault, masterKey, wraps);
+        await persist(finalVault, effectiveKey, wraps);
+        if (effectiveKey !== masterKey) setMasterKey(effectiveKey);
         setVault(finalVault);
-        const blob = await encryptWithKey(masterKey, finalVault);
-        await pushStoredVault(uid, { iv: blob.iv, cipher: blob.cipher, updatedAt: Date.now(), passphrase: wraps.passphrase });
+        const blob = await encryptWithKey(effectiveKey, finalVault);
+        const masterKeyB64 = await exportKeyRaw(effectiveKey);
+        const now = Date.now();
+        lastSyncedUpdatedAtRef.current = now;
+        await pushStoredVault(uid, { iv: blob.iv, cipher: blob.cipher, updatedAt: now, masterKeyB64 });
         setError(null);
         setSyncStatus("success");
-        const now = Date.now();
         setLastSyncedAt(now);
         try {
           localStorage.setItem(LAST_SYNCED_KEY, String(now));
@@ -292,7 +292,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // 로그인된 상태로 쓰는 동안은 클라우드 문서를 실시간 구독해서, 다른 기기가 올린 내용이 거의
   // 바로 반영되게 한다. updatedAt을 기억해뒀다가 "방금 내가 직접 올린 것"이 메아리처럼 다시
   // 돌아오는 건 무시해서(무한 루프 방지), 다른 기기가 올린 진짜 변경만 받아 합친다.
-  const lastSyncedUpdatedAtRef = useRef<number | null>(null);
   useEffect(() => {
     if (status !== "unlocked" || !isSyncConfigured() || !masterKey || !wraps) return;
     const unsubRef: { current: (() => void) | undefined } = { current: undefined };
@@ -301,22 +300,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const { getCurrentUid, subscribeStoredVault } = await loadSync();
       const uid = await getCurrentUid();
       if (!uid || cancelledRef.current) return;
-      unsubRef.current = subscribeStoredVault(uid, (remoteStored) => {
-        if (!remoteStored || remoteStored.updatedAt === lastSyncedUpdatedAtRef.current) return;
+      unsubRef.current = subscribeStoredVault(uid, (cloud) => {
+        if (!cloud || cloud.updatedAt === lastSyncedUpdatedAtRef.current) return;
         void (async () => {
           try {
-            const remoteVault = await decryptWithKey<Vault>(masterKey, { iv: remoteStored.iv, cipher: remoteStored.cipher });
-            lastSyncedUpdatedAtRef.current = remoteStored.updatedAt;
+            const effectiveKey = await resolveMasterKey(cloud, masterKey);
+            const remoteVault = await decryptWithKey<Vault>(effectiveKey, { iv: cloud.iv, cipher: cloud.cipher });
+            lastSyncedUpdatedAtRef.current = cloud.updatedAt;
+            if (effectiveKey !== masterKey) setMasterKey(effectiveKey);
             setVault((prev) => {
               if (!prev) return prev;
               const merged = mergeVaults(prev, remoteVault);
-              void persist(merged, masterKey, wraps);
+              void persist(merged, effectiveKey, wraps);
               return merged;
             });
             setLastSyncedAt(Date.now());
           } catch {
-            // 다른 기기가 다른 암호로 만든 Vault라 복호화가 안 되는 등 — 실시간 구독 중에 매번
-            // 에러를 띄우면 거슬리니 조용히 넘어간다. 수동 "지금 동기화"를 누르면 그때 에러가 뜬다.
+            // 복호화가 안 되는 등 — 실시간 구독 중에 매번 에러를 띄우면 거슬리니 조용히 넘어간다.
+            // 수동 "지금 동기화"를 누르면 그때 에러가 뜬다.
           }
         })();
       });
@@ -339,10 +340,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const uid = await getCurrentUid();
         if (!uid) return;
         const blob = await encryptWithKey(masterKey, vault);
+        const masterKeyB64 = await exportKeyRaw(masterKey);
         const updatedAt = Date.now();
         lastSyncedUpdatedAtRef.current = updatedAt;
         try {
-          await pushStoredVault(uid, { iv: blob.iv, cipher: blob.cipher, updatedAt, passphrase: wraps.passphrase });
+          await pushStoredVault(uid, { iv: blob.iv, cipher: blob.cipher, updatedAt, masterKeyB64 });
           setLastSyncedAt(updatedAt);
           try {
             localStorage.setItem(LAST_SYNCED_KEY, String(updatedAt));
@@ -370,14 +372,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       lastSyncedAt,
       setup,
       unlock,
-      joinFromCloud,
       lock,
       update,
       exportBackup,
       restoreBackup,
       syncNow,
     }),
-    [status, vault, error, syncStatus, lastSyncedAt, setup, unlock, joinFromCloud, lock, update, exportBackup, restoreBackup, syncNow]
+    [status, vault, error, syncStatus, lastSyncedAt, setup, unlock, lock, update, exportBackup, restoreBackup, syncNow]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
