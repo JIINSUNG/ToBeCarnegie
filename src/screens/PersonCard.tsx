@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useSession } from "../session";
 import {
   addAnniversary,
+  addAvoidTopic,
   addDislike,
   addFavor,
+  addFavorGiven,
   addGift,
   addIntention,
   addLike,
@@ -15,8 +17,10 @@ import {
   deletePerson,
   findPerson,
   isValidAnniversaryDate,
+  removeAvoidTopic,
   removeDislike,
   removeFavor,
+  removeFavorGiven,
   removeLike,
   setGiftRepaidWith,
   setLastContact,
@@ -47,12 +51,16 @@ function ChipListField({
   items,
   onAdd,
   onRemove,
+  tone = "default",
+  hint,
 }: {
   label: string;
   placeholder: string;
   items: string[];
   onAdd: (text: string) => void;
   onRemove: (index: number) => void;
+  tone?: "default" | "warn";
+  hint?: string;
 }) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +80,8 @@ function ChipListField({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <span style={{ fontSize: 13, color: "var(--fg2)", fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: 13, color: tone === "warn" ? "var(--warn)" : "var(--fg2)", fontWeight: 600 }}>{label}</span>
+      {hint && <p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>{hint}</p>}
       <div style={{ display: "flex", gap: 8 }}>
         <input
           value={draft}
@@ -92,7 +101,7 @@ function ChipListField({
       {items.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {items.map((t, i) => (
-            <button key={i} type="button" onClick={() => onRemove(i)} aria-label={`${t} 삭제`} style={chipStyle}>
+            <button key={i} type="button" onClick={() => onRemove(i)} aria-label={`${t} 삭제`} style={tone === "warn" ? warnChipStyle : chipStyle}>
               {t} ✕
             </button>
           ))}
@@ -102,9 +111,18 @@ function ChipListField({
   );
 }
 
-function AnniversarySection({ person, onAdd, onDelete }: { person: Person; onAdd: (label: string, date: string) => void; onDelete: (id: string) => void }) {
+function AnniversarySection({
+  person,
+  onAdd,
+  onDelete,
+}: {
+  person: Person;
+  onAdd: (label: string, date: string, lunar: boolean) => void;
+  onDelete: (id: string) => void;
+}) {
   const [label, setLabel] = useState("");
   const [date, setDate] = useState("");
+  const [lunar, setLunar] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const submit = () => {
@@ -123,9 +141,10 @@ function AnniversarySection({ person, onAdd, onDelete }: { person: Person; onAdd
       return;
     }
     setError(null);
-    onAdd(l, date);
+    onAdd(l, date, lunar);
     setLabel("");
     setDate("");
+    setLunar(false);
   };
 
   const anniversaries = [...(person.anniversaries ?? [])].sort((a, b) => a.date.localeCompare(b.date));
@@ -145,6 +164,10 @@ function AnniversarySection({ person, onAdd, onDelete }: { person: Person; onAdd
         />
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...inputStyle, width: 150 }} />
       </div>
+      <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: "var(--fg2)" }}>
+        <input type="checkbox" checked={lunar} onChange={(e) => setLunar(e.target.checked)} />
+        음력 기준이에요 (환산은 직접 해서 적어주세요)
+      </label>
       <button type="button" onClick={submit} disabled={!label.trim() || !date} style={{ ...smallAddBtnStyle, alignSelf: "flex-start" }}>
         추가
       </button>
@@ -156,7 +179,10 @@ function AnniversarySection({ person, onAdd, onDelete }: { person: Person; onAdd
         anniversaries.map((a) => (
           <div key={a.id} style={rowStyle}>
             <div>
-              <p style={{ margin: 0, fontSize: 14 }}>{a.label}</p>
+              <p style={{ margin: 0, fontSize: 14 }}>
+                {a.label}
+                {a.lunar && <span style={{ color: "var(--muted)", fontWeight: 400 }}> (음력)</span>}
+              </p>
               <span style={{ color: "var(--muted)", fontSize: 11.5 }}>{a.date}</span>
             </div>
             <button type="button" onClick={() => onDelete(a.id)} style={deleteLinkStyle}>
@@ -228,6 +254,8 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [giftDraft, setGiftDraft] = useState("");
+  const [giftDirection, setGiftDirection] = useState<"received" | "given">("received");
+  const [giftAmount, setGiftAmount] = useState("");
   const [giftError, setGiftError] = useState<string | null>(null);
   const [prevContactAt, setPrevContactAt] = useState<number | undefined | null>(null);
   const person = vault ? findPerson(vault, id) : undefined;
@@ -265,8 +293,10 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
       return;
     }
     setGiftError(null);
-    update((v) => addGift(v, id, text));
+    const amount = giftAmount.trim() ? Number(giftAmount.trim()) : undefined;
+    update((v) => addGift(v, id, text, giftDirection, amount));
     setGiftDraft("");
+    setGiftAmount("");
   };
 
   const removePerson = () => {
@@ -310,6 +340,7 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
         <div style={{ flex: 1 }}>
           <h1 style={{ fontSize: 22, margin: 0, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
             <span style={{ wordBreak: "break-word" }}>{person.name}</span>
+            {person.nickname && <span style={{ fontSize: 14, fontWeight: 400, color: "var(--muted)" }}>({person.nickname})</span>}
             {person.mbti && (
               <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent)", background: "var(--field)", borderRadius: 999, padding: "2px 8px", flexShrink: 0, whiteSpace: "nowrap" }}>
                 {person.mbti}
@@ -329,9 +360,12 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
           {(person.groups ?? []).length > 0 && (
             <p style={{ color: "var(--muted)", fontSize: 12.5, margin: "4px 0 0" }}>👥 {(person.groups ?? []).join(" · ")}</p>
           )}
+          {person.honorific && <p style={{ color: "var(--muted)", fontSize: 12.5, margin: "4px 0 0" }}>💬 {person.honorific}</p>}
+          {person.metStory && <p style={{ color: "var(--muted)", fontSize: 12.5, margin: "4px 0 0" }}>🤝 {person.metStory}</p>}
           <p style={{ color: "var(--muted)", fontSize: 12.5, margin: "4px 0 0" }}>
             {RELATIONSHIP_TEMP_LABEL[temp]}
             {person.lastContactAt && ` · ${formatDate(person.lastContactAt)}`}
+            {person.contactFrequencyDays && ` · ${person.contactFrequencyDays}일마다 연락 목표`}
           </p>
         </div>
       </div>
@@ -424,6 +458,18 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
 
       <section style={sectionStyle}>
         <ChipListField
+          label="⚠️ 피해야 할 대화 주제"
+          placeholder="예: 최근 이혼함, 부모님 건강 안 좋으심"
+          hint="먼저 꺼내지 않는 게 좋은 민감한 이야기예요."
+          items={person.avoidTopics ?? []}
+          onAdd={(text) => update((v) => addAvoidTopic(v, id, text))}
+          onRemove={(index) => update((v) => removeAvoidTopic(v, id, index))}
+          tone="warn"
+        />
+      </section>
+
+      <section style={sectionStyle}>
+        <ChipListField
           label="받은 은혜"
           placeholder="예: 이사할 때 도와줌"
           items={person.favors ?? []}
@@ -432,24 +478,63 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
         />
       </section>
 
+      <section style={sectionStyle}>
+        <ChipListField
+          label="내가 베푼 호의"
+          placeholder="예: 취업 면접 때 조언해 줌"
+          items={person.favorsGiven ?? []}
+          onAdd={(text) => update((v) => addFavorGiven(v, id, text))}
+          onRemove={(index) => update((v) => removeFavorGiven(v, id, index))}
+        />
+      </section>
+
       <AnniversarySection
         person={person}
-        onAdd={(label, date) => update((v) => addAnniversary(v, id, label, date))}
+        onAdd={(label, date, lunar) => update((v) => addAnniversary(v, id, label, date, lunar))}
         onDelete={(annId) => update((v) => deleteAnniversary(v, id, annId))}
       />
 
       <section style={sectionStyle}>
-        <h2 style={headingStyle}>받은 선물</h2>
-        <div style={{ display: "flex", gap: 8 }}>
+        <h2 style={headingStyle}>선물·경조사비 기록</h2>
+        <p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>선물뿐 아니라 축의금·조의금·밥값처럼 주고받은 돈도 적어두세요.</p>
+        <input
+          placeholder="예: 생일 선물로 향수, 결혼 축의금"
+          value={giftDraft}
+          onChange={(e) => {
+            setGiftDraft(e.target.value);
+            setGiftError(null);
+          }}
+          onKeyDown={(e) => e.key === "Enter" && addDraftGift()}
+          style={inputStyle}
+        />
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 4 }}>
+            {(["received", "given"] as const).map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setGiftDirection(d)}
+                aria-pressed={giftDirection === d}
+                style={{
+                  fontSize: 12.5,
+                  padding: "6px 12px",
+                  borderRadius: 999,
+                  border: "1px solid var(--line)",
+                  background: giftDirection === d ? "var(--accent)" : "var(--field)",
+                  color: giftDirection === d ? "var(--accent-fg)" : "var(--fg2)",
+                }}
+              >
+                {d === "received" ? "받음" : "줌"}
+              </button>
+            ))}
+          </div>
           <input
-            placeholder="예: 생일 선물로 향수"
-            value={giftDraft}
-            onChange={(e) => {
-              setGiftDraft(e.target.value);
-              setGiftError(null);
-            }}
-            onKeyDown={(e) => e.key === "Enter" && addDraftGift()}
-            style={{ ...inputStyle, flex: 1 }}
+            type="number"
+            inputMode="numeric"
+            placeholder="금액(선택, 원)"
+            value={giftAmount}
+            onChange={(e) => setGiftAmount(e.target.value)}
+            style={{ ...inputStyle, flex: 1, padding: "8px 10px" }}
           />
           <button type="button" onClick={addDraftGift} disabled={!giftDraft.trim()} style={smallAddBtnStyle}>
             추가
@@ -458,51 +543,68 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
         {giftError && <p style={{ color: "var(--warn)", fontSize: 12.5, margin: 0 }}>{giftError}</p>}
 
         {(person.gifts ?? []).length === 0 ? (
-          <p style={{ color: "var(--muted)", fontSize: 13.5, margin: 0 }}>아직 받은 선물이 없어요.</p>
+          <p style={{ color: "var(--muted)", fontSize: 13.5, margin: 0 }}>아직 기록된 게 없어요.</p>
         ) : (
           [...(person.gifts ?? [])]
             .sort((a, b) => b.at - a.at)
-            .map((g) => (
-              <div key={g.id} style={{ padding: "10px 12px", borderRadius: "var(--radius)", background: "var(--field)", display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <button
-                    type="button"
-                    onClick={() => update((v) => toggleGiftRepaid(v, id, g.id))}
-                    aria-pressed={g.repaid}
-                    aria-label={g.repaid ? "갚음 표시 해제" : "갚음으로 표시"}
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 6,
-                      border: "1px solid var(--line)",
-                      background: g.repaid ? "var(--ok)" : "var(--card)",
-                      color: "#fff",
-                      fontSize: 13,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {g.repaid ? "✓" : ""}
-                  </button>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontSize: 14, textDecoration: g.repaid ? "line-through" : "none", color: g.repaid ? "var(--muted)" : "var(--fg)" }}>{g.text}</p>
-                    <span style={{ color: "var(--muted)", fontSize: 11.5 }}>{g.repaid ? `${formatDate(g.repaidAt ?? g.at)} 갚음` : `${formatDate(g.at)} 받음`}</span>
+            .map((g) => {
+              const dir = g.direction ?? "received";
+              const amountLabel = g.amount ? ` · ${g.amount.toLocaleString("ko-KR")}원` : "";
+              return (
+                <div key={g.id} style={{ padding: "10px 12px", borderRadius: "var(--radius)", background: "var(--field)", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {dir === "received" ? (
+                      <button
+                        type="button"
+                        onClick={() => update((v) => toggleGiftRepaid(v, id, g.id))}
+                        aria-pressed={g.repaid}
+                        aria-label={g.repaid ? "갚음 표시 해제" : "갚음으로 표시"}
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 6,
+                          border: "1px solid var(--line)",
+                          background: g.repaid ? "var(--ok)" : "var(--card)",
+                          color: "#fff",
+                          fontSize: 13,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {g.repaid ? "✓" : ""}
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--fg2)", background: "var(--card)", border: "1px solid var(--line)", borderRadius: 999, padding: "3px 8px", flexShrink: 0 }}>
+                        줌
+                      </span>
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: 14, textDecoration: g.repaid ? "line-through" : "none", color: g.repaid ? "var(--muted)" : "var(--fg)" }}>
+                        {g.text}
+                        {amountLabel}
+                      </p>
+                      <span style={{ color: "var(--muted)", fontSize: 11.5 }}>
+                        {dir === "given" ? `${formatDate(g.at)} 줌` : g.repaid ? `${formatDate(g.repaidAt ?? g.at)} 갚음` : `${formatDate(g.at)} 받음`}
+                      </span>
+                    </div>
+                    <button type="button" onClick={() => update((v) => deleteGift(v, id, g.id))} style={deleteLinkStyle}>
+                      삭제
+                    </button>
                   </div>
-                  <button type="button" onClick={() => update((v) => deleteGift(v, id, g.id))} style={deleteLinkStyle}>
-                    삭제
-                  </button>
+                  {dir === "received" && (
+                    <input
+                      placeholder="뭘로(어떻게) 갚을지/갚았는지 적어두세요"
+                      defaultValue={g.repaidWith ?? ""}
+                      onBlur={(e) => {
+                        if (e.target.value !== (g.repaidWith ?? "")) {
+                          update((v) => setGiftRepaidWith(v, id, g.id, e.target.value));
+                        }
+                      }}
+                      style={{ ...inputStyle, padding: "8px 10px" }}
+                    />
+                  )}
                 </div>
-                <input
-                  placeholder="뭘로(어떻게) 갚을지/갚았는지 적어두세요"
-                  defaultValue={g.repaidWith ?? ""}
-                  onBlur={(e) => {
-                    if (e.target.value !== (g.repaidWith ?? "")) {
-                      update((v) => setGiftRepaidWith(v, id, g.id, e.target.value));
-                    }
-                  }}
-                  style={{ ...inputStyle, padding: "8px 10px" }}
-                />
-              </div>
-            ))
+              );
+            })
         )}
       </section>
 
@@ -536,4 +638,5 @@ const headingStyle: React.CSSProperties = { fontSize: 14, margin: 0, color: "var
 const inputStyle: React.CSSProperties = { padding: "10px 12px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--field)", color: "var(--fg)", fontSize: 16 };
 const smallAddBtnStyle: React.CSSProperties = { padding: "0 14px", borderRadius: "var(--radius)", border: "none", background: "var(--accent)", color: "var(--accent-fg)", fontSize: 13.5, fontWeight: 600 };
 const chipStyle: React.CSSProperties = { fontSize: 12.5, color: "var(--fg2)", background: "var(--field)", border: "1px solid var(--line)", borderRadius: 999, padding: "4px 10px" };
+const warnChipStyle: React.CSSProperties = { fontSize: 12.5, color: "var(--warn)", background: "var(--field)", border: "1px solid var(--warn)", borderRadius: 999, padding: "4px 10px" };
 const rowStyle: React.CSSProperties = { padding: "10px 12px", borderRadius: "var(--radius)", background: "var(--field)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 };

@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { emptyVault } from "../types";
 import {
   addAnniversary,
+  addAvoidTopic,
   addCustomWisdom,
   addDislike,
   addFavor,
+  addFavorGiven,
   addGift,
   addGroupName,
   addIntention,
@@ -25,9 +27,11 @@ import {
   isValidBirthday,
   isValidBirthdayYear,
   isValidMbti,
+  removeAvoidTopic,
   removeCustomWisdom,
   removeDislike,
   removeFavor,
+  removeFavorGiven,
   removeLike,
   renameGroup,
   searchPeople,
@@ -128,6 +132,22 @@ describe("people", () => {
     expect(searchPeople(v, "도와줌").map((p) => p.name)).toEqual(["김민수"]);
   });
 
+  it("searchPeople은 별명·첫 만남·호칭·베푼 호의·피해야 할 주제로도 찾는다", () => {
+    let v = createPerson(emptyVault(), "김민수");
+    v = createPerson(v, "이지은");
+    const [minsu, jieun] = v.people;
+
+    v = updatePerson(v, minsu.id, { nickname: "민수형", metStory: "동호회에서 소개로 만남", honorific: "형이라고 부름" });
+    v = addFavorGiven(v, minsu.id, "취업 면접 때 조언해 줌");
+    v = addAvoidTopic(v, jieun.id, "최근 이혼함");
+
+    expect(searchPeople(v, "민수형").map((p) => p.name)).toEqual(["김민수"]);
+    expect(searchPeople(v, "동호회").map((p) => p.name)).toEqual(["김민수"]);
+    expect(searchPeople(v, "형이라고").map((p) => p.name)).toEqual(["김민수"]);
+    expect(searchPeople(v, "면접 때 조언").map((p) => p.name)).toEqual(["김민수"]);
+    expect(searchPeople(v, "이혼").map((p) => p.name)).toEqual(["이지은"]);
+  });
+
   it("addGift·toggleGiftRepaid·deleteGift가 그 사람의 gifts만 건드린다", () => {
     let v = createPerson(emptyVault(), "민수");
     const id = v.people[0].id;
@@ -146,6 +166,26 @@ describe("people", () => {
 
     v = deleteGift(v, id, giftId);
     expect(findPerson(v, id)?.gifts).toHaveLength(0);
+  });
+
+  it("addGift에 direction·amount를 넘기면 그대로 저장되고, 안 넘기면 받음으로 본다(이전 데이터 호환)", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    v = addGift(v, id, "결혼 축의금");
+    expect(findPerson(v, id)?.gifts![0].direction).toBe("received");
+    expect(findPerson(v, id)?.gifts![0].amount).toBeUndefined();
+
+    v = addGift(v, id, "저녁값 계산", "given", 32000);
+    const given = findPerson(v, id)?.gifts![1];
+    expect(given?.direction).toBe("given");
+    expect(given?.amount).toBe(32000);
+  });
+
+  it("addAnniversary에 lunar를 넘기면 그대로 저장된다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    v = addAnniversary(v, id, "어머니 생신", "2024-03-15", true);
+    expect(findPerson(v, id)?.anniversaries![0].lunar).toBe(true);
   });
 
   it("gifts 필드가 없는(이전 버전) 사람에도 addGift가 안전하게 동작한다", () => {
@@ -194,6 +234,20 @@ describe("people", () => {
     expect(findPerson(v, id)?.likes).toEqual([]);
     expect(findPerson(v, id)?.dislikes).toEqual([]);
     expect(findPerson(v, id)?.favors).toEqual([]);
+  });
+
+  it("addFavorGiven/removeFavorGiven, addAvoidTopic/removeAvoidTopic이 각자 리스트만 건드린다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    v = addFavorGiven(v, id, "취업 면접 때 조언해 줌");
+    v = addAvoidTopic(v, id, "최근 이혼함");
+    expect(findPerson(v, id)?.favorsGiven).toEqual(["취업 면접 때 조언해 줌"]);
+    expect(findPerson(v, id)?.avoidTopics).toEqual(["최근 이혼함"]);
+
+    v = removeFavorGiven(v, id, 0);
+    v = removeAvoidTopic(v, id, 0);
+    expect(findPerson(v, id)?.favorsGiven).toEqual([]);
+    expect(findPerson(v, id)?.avoidTopics).toEqual([]);
   });
 
   it("addIntention·deleteIntention이 그 사람의 intentions만 건드린다", () => {

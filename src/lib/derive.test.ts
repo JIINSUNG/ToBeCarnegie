@@ -103,6 +103,15 @@ describe("staleContacts", () => {
     expect(result).toHaveLength(1);
     expect(result[0].daysSinceContact).toBe(100);
   });
+
+  it("contactFrequencyDays를 따로 정해둔 사람은 기본 threshold 대신 그 값을 쓴다", () => {
+    let v = createPerson(emptyVault(), "자주연락목표");
+    v = updatePerson(v, v.people[0].id, { lastContactAt: NOW - 20 * DAY_MS, contactFrequencyDays: 14 });
+
+    // 기본 threshold(60일)로는 안 걸리지만, 이 사람 전용 14일 기준으로는 걸려야 한다.
+    const result = staleContacts(v, NOW, 60);
+    expect(result.map((r) => r.person.name)).toEqual(["자주연락목표"]);
+  });
 });
 
 describe("shouldRemindBackup", () => {

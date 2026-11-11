@@ -54,6 +54,8 @@ function mergePerson(a: Person, b: Person): Person {
     likes: mergeStringList(a.likes, b.likes),
     dislikes: mergeStringList(a.dislikes, b.dislikes),
     favors: mergeStringList(a.favors, b.favors),
+    favorsGiven: mergeStringList(a.favorsGiven, b.favorsGiven),
+    avoidTopics: mergeStringList(a.avoidTopics, b.avoidTopics),
     createdAt: Math.min(a.createdAt, b.createdAt),
   };
 }

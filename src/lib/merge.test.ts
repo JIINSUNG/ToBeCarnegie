@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyVault, type Vault } from "../types";
-import { addFavor, addGift, addIntention, addLike, addNote, createPerson, findPerson, updatePerson } from "./people";
+import { addAvoidTopic, addFavor, addFavorGiven, addGift, addIntention, addLike, addNote, createPerson, findPerson, updatePerson } from "./people";
 import { mergeVaults } from "./merge";
 
 function withPerson(vault: Vault, name: string, id: string): Vault {
@@ -64,6 +64,19 @@ describe("mergeVaults", () => {
     const merged = mergeVaults(local, incoming);
     expect(findPerson(merged, "p1")?.likes?.sort()).toEqual(["영화", "커피"]);
     expect(findPerson(merged, "p1")?.favors).toEqual(["이사 도와줌"]);
+  });
+
+  it("베푼 호의·피해야 할 주제도 좋아요처럼 중복만 빼고 합쳐진다", () => {
+    let local = withPerson(emptyVault(), "민수", "p1");
+    local = addFavorGiven(local, "p1", "로컬에서 베푼 호의");
+    local = addAvoidTopic(local, "p1", "최근 이혼함");
+
+    let incoming = withPerson(emptyVault(), "민수", "p1");
+    incoming = addFavorGiven(incoming, "p1", "원격에서 베푼 호의");
+
+    const merged = mergeVaults(local, incoming);
+    expect(findPerson(merged, "p1")?.favorsGiven?.sort()).toEqual(["로컬에서 베푼 호의", "원격에서 베푼 호의"]);
+    expect(findPerson(merged, "p1")?.avoidTopics).toEqual(["최근 이혼함"]);
   });
 
   it("다짐도 노트처럼 id 단위로 합쳐진다 (둘 다 남음)", () => {

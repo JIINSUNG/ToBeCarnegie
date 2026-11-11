@@ -7,11 +7,16 @@ export interface Note {
   updatedAt: number;
 }
 
-/** 받은 선물 — 나중에 뭘로 갚을지/갚았는지 체크하는 용도. */
+/** 주고받은 선물·돈(축의금·조의금·밥값 등) — 나중에 뭘로 갚을지/갚았는지 체크하는 용도. */
 export interface Gift {
   id: string;
   text: string;
   at: number;
+  /** 내가 받았는지 줬는지. 이전 데이터엔 없어서 없으면 "received"로 본다(원래 다 받은 선물이었음). */
+  direction?: "received" | "given";
+  /** 돈이면(축의금·밥값 등) 금액(원). 선물이면 생략. */
+  amount?: number;
+  /** "받았을 때" 답례했는지 — direction이 "given"이면 의미 없음. */
   repaid: boolean;
   repaidAt?: number;
   /** 뭘로 갚았는지(선택). 체크 안 했어도 미리 적어둘 수 있다. */
@@ -25,6 +30,8 @@ export interface Anniversary {
   label: string;
   /** "YYYY-MM-DD" — 몇 년 됐는지도 보여줄 수 있게 연도까지 저장(생일과 달리 나이 노출 걱정이 없음). */
   date: string;
+  /** 음력 기준 날짜라는 표시만 — 자동 변환은 안 하고, 날짜는 사용자가 알아서 양력으로 환산해 적는다. */
+  lunar?: boolean;
   updatedAt: number;
 }
 
@@ -47,6 +54,14 @@ export interface Person {
   mbti?: string;
   /** 자유 입력(예: 여성/남성/기타) — 선택 사항, 강제하지 않는다. */
   gender?: string;
+  /** 별명 — 이름과 별개로 부르는 호칭(선택). */
+  nickname?: string;
+  /** 언제·어디서·어떤 계기로 알게 됐는지 한두 줄. */
+  metStory?: string;
+  /** 이 사람을 부르는 호칭이나 말투(예: "형이라고 부름 · 반말"). */
+  honorific?: string;
+  /** 이 정도 주기(일)로 연락하고 싶다는 설정 — 두면 "연락 뜸한 사람" 판단에서 기본값 대신 이걸 쓴다. */
+  contactFrequencyDays?: number;
   tags: string[];
   /** 태그와 별개로, 사람을 묶어서 관리하는 그룹(가족/직장 등). 자유 목록, PersonEdit에서 고른다. */
   groups?: string[];
@@ -62,6 +77,10 @@ export interface Person {
   dislikes?: string[];
   /** 상대에게 받은 은혜·도움 */
   favors?: string[];
+  /** 내가 상대에게 베푼 호의·도움(받은 은혜의 반대 방향). */
+  favorsGiven?: string[];
+  /** 꺼내면 안 되는/조심해야 할 대화 주제(예: "최근 이혼함", "부모님 건강 안 좋으심"). */
+  avoidTopics?: string[];
   /** "이 사람한텐 이렇게 하고 싶다" 다짐들 */
   intentions?: Intention[];
   createdAt: number;

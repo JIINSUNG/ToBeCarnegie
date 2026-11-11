@@ -13,10 +13,14 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
   const existing = id && vault ? findPerson(vault, id) : undefined;
 
   const [name, setName] = useState(existing?.name ?? "");
+  const [nickname, setNickname] = useState(existing?.nickname ?? "");
   const [dateValue, setDateValue] = useState(existing?.birthday ? `${existing.birthdayYear ?? PLACEHOLDER_YEAR}-${existing.birthday}` : "");
   const [yearUnknown, setYearUnknown] = useState(existing?.birthday ? !existing.birthdayYear : false);
   const [mbti, setMbti] = useState(existing?.mbti ?? "");
   const [gender, setGender] = useState(existing?.gender ?? "");
+  const [metStory, setMetStory] = useState(existing?.metStory ?? "");
+  const [honorific, setHonorific] = useState(existing?.honorific ?? "");
+  const [contactFrequencyDays, setContactFrequencyDays] = useState(existing?.contactFrequencyDays ? String(existing.contactFrequencyDays) : "");
   const [tags, setTags] = useState(existing?.tags.join(", ") ?? "");
   const [selectedGroups, setSelectedGroups] = useState<string[]>(existing?.groups ?? []);
   const [addingGroup, setAddingGroup] = useState(false);
@@ -78,6 +82,12 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
       .map((t) => t.trim())
       .filter(Boolean);
     const groupList = selectedGroups;
+    const freeTextIssue = checkSensitive(nickname) ?? checkSensitive(metStory) ?? checkSensitive(honorific);
+    if (freeTextIssue) {
+      setError(BLOCK_REASON_LABEL[freeTextIssue]);
+      return;
+    }
+    const frequency = contactFrequencyDays ? Number(contactFrequencyDays) : undefined;
 
     if (existing) {
       update((v) =>
@@ -87,6 +97,10 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
           birthdayYear,
           mbti: trimmedMbti || undefined,
           gender: gender || undefined,
+          nickname: nickname.trim() || undefined,
+          metStory: metStory.trim() || undefined,
+          honorific: honorific.trim() || undefined,
+          contactFrequencyDays: frequency,
           tags: tagList,
           groups: groupList,
         })
@@ -103,6 +117,10 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
         birthdayYear,
         mbti: trimmedMbti || undefined,
         gender: gender || undefined,
+        nickname: nickname.trim() || undefined,
+        metStory: metStory.trim() || undefined,
+        honorific: honorific.trim() || undefined,
+        contactFrequencyDays: frequency,
         tags: tagList,
         groups: groupList,
       });
@@ -125,6 +143,11 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
       <label style={fieldStyle}>
         <span>이름</span>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="이름" style={inputStyle} autoFocus />
+      </label>
+
+      <label style={fieldStyle}>
+        <span>별명 (선택)</span>
+        <input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="예: 꼬맹이" style={inputStyle} />
       </label>
 
       <label style={fieldStyle}>
@@ -166,6 +189,29 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
           ))}
         </div>
       </div>
+
+      <label style={fieldStyle}>
+        <span>첫 만남 (선택)</span>
+        <input value={metStory} onChange={(e) => setMetStory(e.target.value)} placeholder="예: 2022년, 동호회 소개로 처음 만남" style={inputStyle} />
+      </label>
+
+      <label style={fieldStyle}>
+        <span>호칭·말투 (선택)</span>
+        <input value={honorific} onChange={(e) => setHonorific(e.target.value)} placeholder="예: 형이라고 부름 · 반말" style={inputStyle} />
+      </label>
+
+      <label style={fieldStyle}>
+        <span>연락 주기 (선택)</span>
+        <select value={contactFrequencyDays} onChange={(e) => setContactFrequencyDays(e.target.value)} style={inputStyle}>
+          <option value="">설정 안 함 (기본 기준으로 봐요)</option>
+          <option value="14">2주마다 연락</option>
+          <option value="30">한 달마다 연락</option>
+          <option value="60">두 달마다 연락</option>
+          <option value="90">세 달마다 연락</option>
+          <option value="180">반 년마다 연락</option>
+          <option value="365">1년마다 연락</option>
+        </select>
+      </label>
 
       <label style={fieldStyle}>
         <span>태그 (선택, 쉼표로 구분)</span>

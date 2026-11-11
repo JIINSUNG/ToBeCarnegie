@@ -17,6 +17,8 @@ export function createPerson(vault: Vault, name: string, id: string = nanoid()):
     likes: [],
     dislikes: [],
     favors: [],
+    favorsGiven: [],
+    avoidTopics: [],
     intentions: [],
     createdAt: now,
     updatedAt: now,
@@ -27,7 +29,23 @@ export function createPerson(vault: Vault, name: string, id: string = nanoid()):
 export function updatePerson(
   vault: Vault,
   id: string,
-  patch: Partial<Pick<Person, "name" | "birthday" | "birthdayYear" | "tags" | "lastContactAt" | "mbti" | "gender" | "groups">>
+  patch: Partial<
+    Pick<
+      Person,
+      | "name"
+      | "birthday"
+      | "birthdayYear"
+      | "tags"
+      | "lastContactAt"
+      | "mbti"
+      | "gender"
+      | "groups"
+      | "nickname"
+      | "metStory"
+      | "honorific"
+      | "contactFrequencyDays"
+    >
+  >
 ): Vault {
   return {
     ...vault,
@@ -69,9 +87,15 @@ export function deleteNote(vault: Vault, personId: string, noteId: string): Vaul
   };
 }
 
-export function addGift(vault: Vault, personId: string, text: string): Vault {
+export function addGift(
+  vault: Vault,
+  personId: string,
+  text: string,
+  direction: "received" | "given" = "received",
+  amount?: number
+): Vault {
   const now = Date.now();
-  const gift: Gift = { id: nanoid(), text, at: now, repaid: false, updatedAt: now };
+  const gift: Gift = { id: nanoid(), text, at: now, direction, amount, repaid: false, updatedAt: now };
   return {
     ...vault,
     people: vault.people.map((p) => (p.id === personId ? { ...p, gifts: [...(p.gifts ?? []), gift], updatedAt: now } : p)),
@@ -115,9 +139,9 @@ export function setGiftRepaidWith(vault: Vault, personId: string, giftId: string
   };
 }
 
-export function addAnniversary(vault: Vault, personId: string, label: string, date: string): Vault {
+export function addAnniversary(vault: Vault, personId: string, label: string, date: string, lunar?: boolean): Vault {
   const now = Date.now();
-  const anniversary: Anniversary = { id: nanoid(), label, date, updatedAt: now };
+  const anniversary: Anniversary = { id: nanoid(), label, date, lunar, updatedAt: now };
   return {
     ...vault,
     people: vault.people.map((p) => (p.id === personId ? { ...p, anniversaries: [...(p.anniversaries ?? []), anniversary], updatedAt: now } : p)),
@@ -151,7 +175,7 @@ export function deleteIntention(vault: Vault, personId: string, intentionId: str
   };
 }
 
-type ListField = "likes" | "dislikes" | "favors";
+type ListField = "likes" | "dislikes" | "favors" | "favorsGiven" | "avoidTopics";
 
 function addToList(vault: Vault, personId: string, field: ListField, text: string): Vault {
   const now = Date.now();
@@ -176,6 +200,10 @@ export const addDislike = (vault: Vault, personId: string, text: string) => addT
 export const removeDislike = (vault: Vault, personId: string, index: number) => removeFromList(vault, personId, "dislikes", index);
 export const addFavor = (vault: Vault, personId: string, text: string) => addToList(vault, personId, "favors", text);
 export const removeFavor = (vault: Vault, personId: string, index: number) => removeFromList(vault, personId, "favors", index);
+export const addFavorGiven = (vault: Vault, personId: string, text: string) => addToList(vault, personId, "favorsGiven", text);
+export const removeFavorGiven = (vault: Vault, personId: string, index: number) => removeFromList(vault, personId, "favorsGiven", index);
+export const addAvoidTopic = (vault: Vault, personId: string, text: string) => addToList(vault, personId, "avoidTopics", text);
+export const removeAvoidTopic = (vault: Vault, personId: string, index: number) => removeFromList(vault, personId, "avoidTopics", index);
 
 export function touchLastContact(vault: Vault, personId: string, at: number = Date.now()): Vault {
   return {
@@ -211,6 +239,9 @@ export function searchPeople(vault: Vault, query: string): Person[] {
   return vault.people.filter(
     (p) =>
       has(p.name) ||
+      has(p.nickname ?? "") ||
+      has(p.metStory ?? "") ||
+      has(p.honorific ?? "") ||
       p.tags.some(has) ||
       p.notes.some((n) => has(n.text)) ||
       (p.gifts ?? []).some((g) => has(g.text) || has(g.repaidWith ?? "")) ||
@@ -218,6 +249,8 @@ export function searchPeople(vault: Vault, query: string): Person[] {
       (p.likes ?? []).some(has) ||
       (p.dislikes ?? []).some(has) ||
       (p.favors ?? []).some(has) ||
+      (p.favorsGiven ?? []).some(has) ||
+      (p.avoidTopics ?? []).some(has) ||
       (p.intentions ?? []).some((i) => has(i.text)) ||
       has(p.mbti ?? "") ||
       (p.groups ?? []).some(has)

@@ -90,13 +90,15 @@ export interface StaleContact {
   daysSinceContact: number;
 }
 
-/** 연락(또는 등록)한 지 thresholdDays 이상 지난 사람들을, 오래된 순서로. */
+/** 연락(또는 등록)한 지 thresholdDays 이상 지난 사람들을, 오래된 순서로. 사람마다
+ * contactFrequencyDays를 따로 정해뒀으면(예: "이 사람은 3달에 한 번") 그 값을 기본값 대신 쓴다. */
 export function staleContacts(vault: Vault, now: number = Date.now(), thresholdDays = 60): StaleContact[] {
   const result: StaleContact[] = [];
   for (const person of vault.people) {
     const lastTouch = person.lastContactAt ?? person.createdAt;
     const daysSinceContact = Math.floor((now - lastTouch) / DAY_MS);
-    if (daysSinceContact >= thresholdDays) {
+    const threshold = person.contactFrequencyDays ?? thresholdDays;
+    if (daysSinceContact >= threshold) {
       result.push({ person, daysSinceContact });
     }
   }
