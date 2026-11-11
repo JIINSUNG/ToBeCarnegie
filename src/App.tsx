@@ -37,6 +37,7 @@ function Shell({ children, tabBar }: { children: React.ReactNode; tabBar?: React
           overflowX: "hidden",
           overscrollBehaviorY: "contain",
           WebkitOverflowScrolling: "touch",
+          paddingInline: 16,
           paddingTop: "env(safe-area-inset-top, 0px)",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
