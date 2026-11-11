@@ -37,6 +37,13 @@ html,
 body {
   margin: 0;
   padding: 0;
+  /* html·body 자체는 아예 스크롤도 고무줄 바운스도 안 되게 막는다 — 실제 스크롤은 App.tsx의 Shell이
+     만드는 안쪽 영역 하나에서만 일어나야 한다. 이게 없으면 iOS Safari에서 손가락으로 화면을 끌 때
+     안쪽 영역과 페이지 전체가 동시에(따로 놀면서) 움직여서 "정신없이" 흔들리고, 가로로도 살짝
+     고무줄처럼 튕기면서 양옆 내용이 잘린 것처럼 보이는 원인이 된다. */
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
@@ -46,7 +53,6 @@ body {
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  min-height: 100dvh;
 }
 
 /* 헤더·탭바를 "화면 전체(body) 스크롤" 바깥에 둬서, 끝까지 스크롤해야만 겨우 나타나거나

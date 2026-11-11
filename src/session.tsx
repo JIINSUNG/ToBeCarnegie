@@ -100,6 +100,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // "방금 내가 직접 올린 것"의 updatedAt — 실시간 구독이 그걸 메아리로 다시 받았을 때 무시해서
   // 무한 루프를 막는 데 쓴다(syncNow·자동 올리기·실시간 구독 셋이 같이 쓴다).
   const lastSyncedUpdatedAtRef = useRef<number | null>(null);
+  // "이 기기에서 사용자가 직접 뭔가 바꿨다"는 표시 — update()에서만 true로 켠다. 실시간 구독이
+  // 받아온 걸 merge해서 setVault할 때는 이걸 안 켜서, "다른 기기가 올린 걸 받아서 합친 것뿐인데
+  // 내용이 똑같아도 새 타임스탬프로 또 올리고, 그걸 그 기기가 또 받아 합쳐서 또 올리고…"가
+  // 무한 반복되는 걸 막는다(실제로 겪은 문제 — 동기화가 끝없이 핑퐁 치면서 느려 보이던 원인).
+  const dirtyRef = useRef(false);
 
   useEffect(() => {
     loadStoredVault().then((stored) => {
@@ -124,6 +129,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
       await persist(newVault, masterKey, w);
       await requestPersistence();
+      dirtyRef.current = true;
       setMasterKey(masterKey);
       setWraps(w);
       setKek(kek);
@@ -192,6 +198,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setVault((prev) => {
         if (!prev || !masterKey || !wraps) return prev;
         const next = fn(prev);
+        dirtyRef.current = true;
         void persist(next, masterKey, wraps);
         return next;
       });
@@ -206,6 +213,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const blob = await encryptWithKey(masterKey, nextVault);
     const stored: StoredVault = { iv: blob.iv, cipher: blob.cipher, updatedAt: now, passphrase: wraps.passphrase };
     await saveStoredVault(stored);
+    dirtyRef.current = true;
     setVault(nextVault);
     return createBackupFile(stored);
   }, [vault, masterKey, wraps]);
@@ -290,6 +298,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const now = Date.now();
         lastSyncedUpdatedAtRef.current = now;
         await pushStoredVault(uid, { iv: blob.iv, cipher: blob.cipher, updatedAt: now, masterKeyB64 });
+        dirtyRef.current = false;
         setError(null);
         setSyncStatus("success");
         setLastSyncedAt(now);
@@ -368,6 +377,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (status !== "unlocked" || !isSyncConfigured() || !vault || !masterKey || !wraps) return;
+    // 실시간 구독이 다른 기기 내용을 받아 합친 것뿐이면(dirtyRef가 false) 다시 올릴 필요가 없다 —
+    // 안 그러면 "받기 → (내용은 그대로인데) 새 타임스탬프로 다시 올리기 → 상대방이 또 받아서 또
+    // 올리기"가 끝없이 반복되며 쓸데없는 네트워크 왕복만 계속돼서 동기화가 굼뜨고 어수선해 보인다.
+    if (!dirtyRef.current) return;
     if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
     pushTimerRef.current = setTimeout(() => {
       void (async () => {
@@ -380,6 +393,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         lastSyncedUpdatedAtRef.current = updatedAt;
         try {
           await pushStoredVault(uid, { iv: blob.iv, cipher: blob.cipher, updatedAt, masterKeyB64 });
+          dirtyRef.current = false;
           setLastSyncedAt(updatedAt);
           try {
             localStorage.setItem(LAST_SYNCED_KEY, String(updatedAt));
@@ -388,7 +402,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           }
         } catch {
           // 조용한 백그라운드 자동 올리기라 실패해도 화면에 에러를 안 띄운다 — 다음 변경 때 다시
-          // 시도되고, 안 되면 사용자가 "지금 동기화"를 직접 눌러서 원인을 볼 수 있다.
+          // 시도되고, 안 되면 사용자가 "지금 동기화"를 직접 눌러서 원인을 볼 수 있다. dirtyRef는
+          // true로 남겨둬서 다음 변경(또는 수동 동기화) 때 다시 시도되게 한다.
         }
       })();
     }, 2000);
