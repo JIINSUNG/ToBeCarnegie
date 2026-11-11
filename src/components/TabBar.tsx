@@ -31,6 +31,9 @@ export function TabBar({ tab, onChange }: { tab: TabKey; onChange: (tab: TabKey)
           display: "grid",
           gridTemplateColumns: `repeat(${TABS.length}, 1fr)`,
           height: TAB_BAR_HEIGHT,
+          // 탭바 배경은 화면 끝까지 닿아야 하지만(전체 너비), 양 끝 탭의 아이콘까지 화면 모서리에
+          // 바짝 붙으면 답답하고 잘린 것처럼 보여서, 아이콘 줄에만 안쪽 여백을 조금 둔다.
+          paddingInline: 8,
         }}
       >
         {TABS.map(([key, icon, label]) => (
