@@ -135,7 +135,9 @@ export function Settings({ onBack }: { onBack: () => void }) {
           {syncStatus === "error" && syncError ? (
             <p style={{ ...hintStyle, color: "var(--warn)" }}>⚠️ {syncError}</p>
           ) : lastSyncedAt ? (
-            <p style={hintStyle}>✓ 마지막 동기화: {timeAgo(lastSyncedAt)}</p>
+            <p style={hintStyle}>
+              ✓ 마지막 동기화: {timeAgo(lastSyncedAt)} · 지금 이 기기엔 사람 {vault?.people.length ?? 0}명
+            </p>
           ) : (
             <p style={hintStyle}>아직 동기화한 적 없어요.</p>
           )}
