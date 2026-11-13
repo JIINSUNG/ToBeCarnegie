@@ -96,6 +96,23 @@ export interface CustomWisdom {
   createdAt: number;
 }
 
+/** 읽은 책 — 독후감과, 그 책에서 뽑아둔 글귀들. */
+export interface Book {
+  id: string;
+  title: string;
+  author?: string;
+  /** 다 읽은 날("YYYY-MM-DD", 선택). */
+  finishedDate?: string;
+  /** 별점 1~5(선택). */
+  rating?: number;
+  /** 독후감 — 길게 써도 된다. */
+  review?: string;
+  /** 이 책에서 뽑아둔 글귀들. */
+  quotes?: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 /** "오늘 하루" 동안만 유효한, 사용자가 스스로에게 하는 다짐. 홈 화면 상단에 뜬다. */
 export interface DailyIntention {
   text: string;
@@ -110,6 +127,7 @@ export interface Vault {
   /** 마지막으로 백업 파일·코드를 내보낸 시각 (derive.ts의 백업 알림이 참고). */
   lastBackupAt?: number;
   customWisdom?: CustomWisdom[];
+  books?: Book[];
   dailyIntention?: DailyIntention;
   /** 아직 아무도 안 속한 그룹도 미리 만들어둘 수 있게 하는 등록부. 실제로 쓰이는 그룹은
    * allGroups()가 이거랑 사람들의 person.groups를 합쳐서 보여준다. */

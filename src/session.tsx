@@ -110,6 +110,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     loadStoredVault().then((stored) => {
       setStatus(stored ? "locked" : "needs-setup");
     });
+    // 동기화를 써본 적 있는 기기면, 잠금 화면이 뜨는 동안 미리 동기화용 코드(Firebase SDK 묶음)를
+    // 백그라운드로 받아둔다 — 그래야 막상 잠금을 풀고 동기화가 필요할 때(실시간 구독 시작, "지금
+    // 동기화") 그제서야 네트워크로 받아오느라 첫 동기화가 유독 느린 일이 없다.
+    if (isSyncConfigured()) {
+      try {
+        if (localStorage.getItem(LAST_SYNCED_KEY)) void loadSync();
+      } catch {
+        // localStorage를 못 읽는 환경 — 미리 받아두기만 못 할 뿐 기능엔 지장 없다
+      }
+    }
   }, []);
 
   const persist = useCallback(async (nextVault: Vault, mk: CryptoKey, w: Wraps) => {
@@ -372,8 +382,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, [status, masterKey, wraps, kek, persist]);
 
-  // 로컬에서 바뀐 내용은 잠깐(2초) 더 안 바뀌면 자동으로 올린다 — 기기마다 "지금 동기화"를 직접
-  // 누를 필요 없이 서로 거의 실시간으로 맞춰지게.
+  // 로컬에서 바뀐 내용은 잠깐(0.8초) 더 안 바뀌면 자동으로 올린다 — 기기마다 "지금 동기화"를 직접
+  // 누를 필요 없이 서로 거의 실시간으로 맞춰지게. (예전엔 2초였는데, dirtyRef로 쓸데없는 재전송을
+  // 막아둬서 짧게 줄여도 핑퐁이 안 생긴다 — 그만큼 다른 기기에 더 빨리 반영된다.)
   const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (status !== "unlocked" || !isSyncConfigured() || !vault || !masterKey || !wraps) return;
@@ -406,7 +417,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           // true로 남겨둬서 다음 변경(또는 수동 동기화) 때 다시 시도되게 한다.
         }
       })();
-    }, 2000);
+    }, 800);
     return () => {
       if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
     };

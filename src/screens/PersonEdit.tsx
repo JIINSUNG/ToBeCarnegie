@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 import { useSession } from "../session";
 import { addGroupName, allGroups, createPerson, findPerson, isValidBirthdayYear, isValidMbti, updatePerson } from "../lib/people";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
-import { stickyHeaderStyle } from "../lib/layout";
+import { linkStyle, stickyHeaderStyle } from "../lib/layout";
 
 /** 연도를 모를 때 달력을 띄우기 위한 자리표시 연도 — 2월 29일도 고를 수 있게 윤년으로 둔다. */
 const PLACEHOLDER_YEAR = 2000;
@@ -282,7 +282,6 @@ export function PersonEdit({ id, onDone, onCancel }: { id: string | null; onDone
   );
 }
 
-const linkStyle: React.CSSProperties = { background: "none", border: "none", color: "var(--fg2)", fontSize: 14, padding: 4 };
 const fieldStyle: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6, fontSize: 13, color: "var(--fg2)" };
 // 16px 미만이면 iOS Safari가 포커스 시 자동으로 확대해버려서(그리고 잘 안 풀림) 16으로 고정.
 const inputStyle: React.CSSProperties = { padding: "11px 14px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--card)", fontSize: 16, color: "var(--fg)" };

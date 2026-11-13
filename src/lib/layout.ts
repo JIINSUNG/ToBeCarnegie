@@ -11,3 +11,6 @@ export const stickyHeaderStyle: React.CSSProperties = {
   paddingInline: 16,
   paddingBlock: 10,
 };
+
+/** 헤더의 "← 홈"/"← 목록" 같은 뒤로가기 링크 버튼 — 전엔 화면마다 똑같은 객체가 따로 있었다. */
+export const linkStyle: React.CSSProperties = { background: "none", border: "none", color: "var(--fg2)", fontSize: 14, padding: 4 };

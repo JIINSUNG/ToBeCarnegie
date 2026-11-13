@@ -1,6 +1,7 @@
 import { useSession } from "../session";
-import { buildBriefing } from "../lib/derive";
-import { stickyHeaderStyle } from "../lib/layout";
+import { ACTIVITY_KIND_LABEL, buildBriefing } from "../lib/derive";
+import { timeAgo } from "../lib/format";
+import { linkStyle, stickyHeaderStyle } from "../lib/layout";
 
 export function Briefing({ onOpenPerson, onSettings, onBack }: { onOpenPerson: (id: string) => void; onSettings: () => void; onBack: () => void }) {
   const { vault } = useSession();
@@ -20,6 +21,7 @@ export function Briefing({ onOpenPerson, onSettings, onBack }: { onOpenPerson: (
       (briefing.upcomingBirthdays.length === 0 &&
         briefing.upcomingAnniversaries.length === 0 &&
         briefing.staleContacts.length === 0 &&
+        briefing.recentActivity.length === 0 &&
         !briefing.shouldBackup) ? (
         <p style={{ color: "var(--muted)", fontSize: 14, textAlign: "center", marginTop: 40 }}>지금은 딱히 알려드릴 게 없어요.</p>
       ) : (
@@ -71,13 +73,28 @@ export function Briefing({ onOpenPerson, onSettings, onBack }: { onOpenPerson: (
               ))}
             </section>
           )}
+
+          {briefing.recentActivity.length > 0 && (
+            <section style={sectionStyle}>
+              <h2 style={headingStyle}>최근 활동</h2>
+              {briefing.recentActivity.map((item, i) => (
+                <button key={item.person.id + item.kind + i} type="button" onClick={() => onOpenPerson(item.person.id)} style={rowStyle}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <b>{item.person.name}</b> · {item.text}
+                  </span>
+                  <span style={{ color: "var(--muted)", fontSize: 12.5, flexShrink: 0, marginLeft: 8 }}>
+                    {ACTIVITY_KIND_LABEL[item.kind]} · {timeAgo(item.at)}
+                  </span>
+                </button>
+              ))}
+            </section>
+          )}
         </>
       )}
     </main>
   );
 }
 
-const linkStyle: React.CSSProperties = { background: "none", border: "none", color: "var(--fg2)", fontSize: 14, padding: 4 };
 const linkBtnStyle: React.CSSProperties = { background: "none", border: "none", color: "var(--accent)", fontSize: 13, padding: 0, alignSelf: "flex-start" };
 const sectionStyle: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 8, padding: 14, borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--card)" };
 const headingStyle: React.CSSProperties = { fontSize: 15, margin: 0 };

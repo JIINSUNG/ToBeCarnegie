@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { emptyVault } from "../types";
-import { addAnniversary, createPerson, updatePerson } from "./people";
-import { buildBriefing, relationshipTemp, shouldRemindBackup, staleContacts, todayDateStr, upcomingAnniversaries, upcomingBirthdays } from "./derive";
+import { addAnniversary, addGift, addIntention, addNote, createPerson, updatePerson } from "./people";
+import {
+  buildBriefing,
+  recentActivity,
+  relationshipTemp,
+  shouldRemindBackup,
+  staleContacts,
+  suggestContact,
+  todayDateStr,
+  upcomingAnniversaries,
+  upcomingBirthdays,
+} from "./derive";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = new Date(2026, 5, 15).getTime(); // 2026-06-15
@@ -139,6 +149,68 @@ describe("buildBriefing", () => {
     const briefing = buildBriefing(v, NOW);
     expect(briefing).toHaveProperty("upcomingBirthdays");
     expect(briefing).toHaveProperty("staleContacts");
+    expect(briefing).toHaveProperty("recentActivity");
     expect(briefing.shouldBackup).toBe(true);
+  });
+});
+
+describe("suggestContact", () => {
+  it("오늘 생일인 사람이 있으면 그 사람을 우선 추천한다", () => {
+    let v = createPerson(emptyVault(), "오늘생일");
+    v = updatePerson(v, v.people[0].id, { birthday: "06-15", lastContactAt: NOW });
+    v = createPerson(v, "연락뜸함");
+    v = updatePerson(v, v.people[1].id, { lastContactAt: NOW - 90 * DAY_MS });
+
+    const result = suggestContact(v, NOW);
+    expect(result?.person.name).toBe("오늘생일");
+    expect(result?.reason).toBe("오늘 생일이에요");
+  });
+
+  it("생일인 사람이 없으면 가장 연락이 뜸한 사람을 추천한다", () => {
+    let v = createPerson(emptyVault(), "최근연락");
+    v = updatePerson(v, v.people[0].id, { lastContactAt: NOW - 10 * DAY_MS });
+    v = createPerson(v, "연락뜸함");
+    v = updatePerson(v, v.people[1].id, { lastContactAt: NOW - 90 * DAY_MS });
+
+    const result = suggestContact(v, NOW);
+    expect(result?.person.name).toBe("연락뜸함");
+    expect(result?.reason).toBe("연락한 지 90일 됐어요");
+  });
+
+  it("추천할 사람이 없으면 null", () => {
+    let v = createPerson(emptyVault(), "최근연락");
+    v = updatePerson(v, v.people[0].id, { lastContactAt: NOW });
+    expect(suggestContact(v, NOW)).toBeNull();
+  });
+});
+
+describe("recentActivity", () => {
+  it("모든 사람의 기록·선물·기념일·다짐을 시간순(최신 먼저)으로 모은다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    v = addNote(v, id, "오래된 기록");
+    v = addGift(v, id, "최근 받은 선물");
+    v = addIntention(v, id, "중간 다짐");
+    // 세 함수 모두 내부에서 실제 Date.now()를 쓰므로, 순서를 확실히 하려고 각 at을 직접 덮어쓴다.
+    v = {
+      ...v,
+      people: v.people.map((p) => ({
+        ...p,
+        notes: p.notes.map((n) => ({ ...n, at: NOW - 100 })),
+        gifts: (p.gifts ?? []).map((g) => ({ ...g, at: NOW })),
+        intentions: (p.intentions ?? []).map((i) => ({ ...i, at: NOW - 50 })),
+      })),
+    };
+
+    const result = recentActivity(v);
+    expect(result.map((r) => r.kind)).toEqual(["gift", "intention", "note"]);
+    expect(result[0].text).toBe("최근 받은 선물");
+  });
+
+  it("limit만큼만 돌려준다", () => {
+    let v = createPerson(emptyVault(), "민수");
+    const id = v.people[0].id;
+    for (let i = 0; i < 5; i++) v = addNote(v, id, `기록${i}`);
+    expect(recentActivity(v, 3)).toHaveLength(3);
   });
 });

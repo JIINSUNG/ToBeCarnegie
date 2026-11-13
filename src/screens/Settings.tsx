@@ -8,7 +8,8 @@ import {
   type BackupFile,
 } from "../lib/backup";
 import { shouldRemindBackup } from "../lib/derive";
-import { stickyHeaderStyle } from "../lib/layout";
+import { timeAgo } from "../lib/format";
+import { linkStyle, stickyHeaderStyle } from "../lib/layout";
 
 function downloadBackupFile(file: BackupFile) {
   const blob = new Blob([serializeBackupFile(file)], { type: "application/json" });
@@ -18,15 +19,6 @@ function downloadBackupFile(file: BackupFile) {
   a.download = `관계노트-백업-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
-}
-
-function timeAgo(ts: number): string {
-  const diffMin = Math.floor((Date.now() - ts) / 60000);
-  if (diffMin < 1) return "방금";
-  if (diffMin < 60) return `${diffMin}분 전`;
-  const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `${diffH}시간 전`;
-  return `${Math.floor(diffH / 24)}일 전`;
 }
 
 export function Settings({ onBack }: { onBack: () => void }) {
@@ -183,7 +175,6 @@ export function Settings({ onBack }: { onBack: () => void }) {
   );
 }
 
-const linkStyle: React.CSSProperties = { background: "none", border: "none", color: "var(--fg2)", fontSize: 14, padding: 4 };
 const sectionStyle: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--card)" };
 const headingStyle: React.CSSProperties = { fontSize: 15, margin: 0 };
 const hintStyle: React.CSSProperties = { color: "var(--muted)", fontSize: 12.5, margin: 0 };

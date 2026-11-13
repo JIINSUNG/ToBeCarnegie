@@ -8,7 +8,18 @@
 // 2단계 전용 — VITE_FIREBASE_* 환경변수가 없으면(.env.local 미설정) 아무 것도 하지 않는다.
 import { initializeApp, type FirebaseApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth, signInWithPopup, signInWithRedirect, type Auth } from "firebase/auth";
-import { doc, getDoc, getFirestore, onSnapshot, setDoc, type Firestore, type Unsubscribe } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  getFirestore,
+  initializeFirestore,
+  onSnapshot,
+  persistentLocalCache,
+  persistentSingleTabManager,
+  setDoc,
+  type Firestore,
+  type Unsubscribe,
+} from "firebase/firestore";
 import { markSyncRedirectPending } from "./sync-pending";
 
 export interface CloudVault {
@@ -52,7 +63,18 @@ function getAuthInstance(): Auth {
 }
 
 function getDb(): Firestore {
-  if (!dbInstance) dbInstance = getFirestore(getApp());
+  if (!dbInstance) {
+    // 오프라인 캐시(IndexedDB)를 켜두면, 앱을 다시 켰을 때 네트워크 응답을 기다리지 않고 마지막으로
+    // 받아둔 내용을 바로 보여주고 뒤에서 최신화한다 — 특히 실시간 구독(onSnapshot) 쪽 체감 속도가
+    // 빨라진다. 사생활 보호 모드 등 IndexedDB를 못 쓰는 환경이면 조용히 기본(메모리만) 모드로.
+    try {
+      dbInstance = initializeFirestore(getApp(), {
+        localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({}) }),
+      });
+    } catch {
+      dbInstance = getFirestore(getApp());
+    }
+  }
   return dbInstance;
 }
 

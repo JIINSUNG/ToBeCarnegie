@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useSession } from "../session";
 import { addGroupName, allGroups, deleteGroup, renameGroup, searchPeople } from "../lib/people";
 import { relationshipTemp, upcomingBirthdays, type RelationshipTemp } from "../lib/derive";
+import { formatDate } from "../lib/format";
 import type { Person } from "../types";
-import { stickyHeaderStyle } from "../lib/layout";
+import { linkStyle, stickyHeaderStyle } from "../lib/layout";
 
 const TEMP_COLOR: Record<RelationshipTemp, string> = {
   warm: "var(--accent)",
@@ -11,11 +12,6 @@ const TEMP_COLOR: Record<RelationshipTemp, string> = {
   cooling: "var(--warn)",
   unknown: "var(--line)",
 };
-
-function formatDate(ts: number) {
-  const d = new Date(ts);
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function statusLine(person: Person): string {
   if (!person.lastContactAt) return "아직 연락 기록 없음";
@@ -297,7 +293,6 @@ export function People({
   );
 }
 
-const linkStyle: React.CSSProperties = { background: "none", border: "none", color: "var(--fg2)", fontSize: 14, padding: 4 };
 const groupHeadingStyle: React.CSSProperties = { fontSize: 15, margin: 0 };
 const groupPanelStyle: React.CSSProperties = {
   display: "flex",

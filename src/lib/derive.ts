@@ -112,11 +112,60 @@ export function shouldRemindBackup(vault: Vault, now: number = Date.now(), thres
   return (now - vault.lastBackupAt) / DAY_MS >= thresholdDays;
 }
 
+export interface ContactSuggestion {
+  person: Person;
+  reason: string;
+}
+
+/** 오늘 연락하면 좋을 사람 딱 한 명 — 생일인 사람이 있으면 그 사람, 없으면 가장 연락이 뜸한
+ * 사람(사람마다 정해둔 연락 주기가 있으면 그 기준). 둘 다 없으면 null. */
+export function suggestContact(vault: Vault, now: number = Date.now()): ContactSuggestion | null {
+  const todayBirthday = upcomingBirthdays(vault, now, 0);
+  if (todayBirthday.length > 0) {
+    return { person: todayBirthday[0].person, reason: "오늘 생일이에요" };
+  }
+  const stale = staleContacts(vault, now);
+  if (stale.length > 0) {
+    return { person: stale[0].person, reason: `연락한 지 ${stale[0].daysSinceContact}일 됐어요` };
+  }
+  return null;
+}
+
+export type ActivityKind = "note" | "gift" | "anniversary" | "intention";
+
+export interface ActivityItem {
+  person: Person;
+  at: number;
+  kind: ActivityKind;
+  text: string;
+}
+
+export const ACTIVITY_KIND_LABEL: Record<ActivityKind, string> = {
+  note: "기록",
+  gift: "선물·경조사",
+  anniversary: "기념일 추가",
+  intention: "다짐",
+};
+
+/** 모든 사람에 걸쳐 최근에 적어둔 것들을 시간순으로 모아, "요즘 내가 뭘 기록했더라"를 한눈에
+ * 보여준다. 기념일은 실제 날짜가 아니라 "언제 등록했는지"(updatedAt) 기준으로 줄 세운다. */
+export function recentActivity(vault: Vault, limit = 20): ActivityItem[] {
+  const items: ActivityItem[] = [];
+  for (const person of vault.people) {
+    for (const n of person.notes) items.push({ person, at: n.at, kind: "note", text: n.text });
+    for (const g of person.gifts ?? []) items.push({ person, at: g.at, kind: "gift", text: g.text });
+    for (const a of person.anniversaries ?? []) items.push({ person, at: a.updatedAt, kind: "anniversary", text: a.label });
+    for (const i of person.intentions ?? []) items.push({ person, at: i.at, kind: "intention", text: i.text });
+  }
+  return items.sort((a, b) => b.at - a.at).slice(0, limit);
+}
+
 export interface Briefing {
   upcomingBirthdays: UpcomingBirthday[];
   upcomingAnniversaries: UpcomingAnniversary[];
   staleContacts: StaleContact[];
   shouldBackup: boolean;
+  recentActivity: ActivityItem[];
 }
 
 export function buildBriefing(vault: Vault, now: number = Date.now()): Briefing {
@@ -125,5 +174,6 @@ export function buildBriefing(vault: Vault, now: number = Date.now()): Briefing 
     upcomingAnniversaries: upcomingAnniversaries(vault, now),
     staleContacts: staleContacts(vault, now),
     shouldBackup: shouldRemindBackup(vault, now),
+    recentActivity: recentActivity(vault),
   };
 }

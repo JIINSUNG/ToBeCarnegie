@@ -26,10 +26,12 @@ src/
   lib/merge.ts        항목별 updatedAt 최신 우선 병합 (백업 복원·동기화 공용)
   lib/filter.ts       입력 필터
   lib/parser.ts       한 줄 기록 파서
-  lib/derive.ts       다가오는 생일, 관계 온도, 연락 뜸한 사람, 브리핑, 백업 알림
-  lib/sync.ts         Firebase 동기화 — 실시간 구독 + 자동 올리기 (2단계)
-  screens/            Lock, Home, People, PersonCard, PersonEdit, Briefing, Settings, Quotes
-  components/
+  lib/derive.ts       다가오는 생일, 관계 온도, 연락 뜸한 사람, 오늘의 추천 연락, 최근 활동, 브리핑, 백업 알림
+  lib/books.ts        읽은 책(독후감·글귀) CRUD
+  lib/format.ts       날짜 표시(formatDate/timeAgo) — 화면 여러 곳이 공용으로 씀
+  lib/sync.ts         Firebase 동기화 — 실시간 구독 + 자동 올리기 (2단계), 오프라인 캐시 켜둠
+  screens/            Lock, Home, People, PersonCard, PersonEdit, Briefing, Settings, Quotes(글귀+독후감)
+  components/         TabBar, ChipListField(좋아요/싫어요/책 글귀 등 공용 칩 입력)
 ```
 
 ## 품질

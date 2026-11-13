@@ -5,7 +5,7 @@ import { addNote, createPerson, findPeopleByName, setDailyIntention } from "../l
 import { parseQuickEntry } from "../lib/parser";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
 import { pickRandomWisdom } from "../lib/wisdom";
-import { todayDateStr, upcomingAnniversaries, upcomingBirthdays } from "../lib/derive";
+import { suggestContact, todayDateStr, upcomingAnniversaries, upcomingBirthdays } from "../lib/derive";
 import { stickyHeaderStyle } from "../lib/layout";
 
 const SOON_WINDOW_DAYS = 7;
@@ -46,6 +46,7 @@ export function Home({
     setEditingIntention(false);
   };
 
+  const suggestion = vault ? suggestContact(vault) : null;
   const soonBirthdays = vault ? upcomingBirthdays(vault, undefined, SOON_WINDOW_DAYS) : [];
   const soonAnniversaries = vault ? upcomingAnniversaries(vault, undefined, SOON_WINDOW_DAYS) : [];
   const soonItems = [
@@ -162,6 +163,16 @@ export function Home({
         </button>
       </div>
 
+      {suggestion && (
+        <div style={suggestBoxStyle}>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--fg2)" }}>📞 오늘은 이분께 연락해볼까요</span>
+          <button type="button" onClick={() => onOpenPerson(suggestion.person.id)} style={suggestRowStyle}>
+            <span style={{ fontWeight: 600 }}>{suggestion.person.name}</span>
+            <span style={{ color: "var(--muted)", fontSize: 12.5 }}>{suggestion.reason}</span>
+          </button>
+        </div>
+      )}
+
       {soonItems.length > 0 && (
         <div style={soonBoxStyle}>
           <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--fg2)" }}>🎉 다가오는 날</span>
@@ -259,6 +270,28 @@ const wisdomBoxStyle: React.CSSProperties = {
   padding: 16,
   borderRadius: 16,
   background: "var(--accent)",
+};
+
+const suggestBoxStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+  padding: 14,
+  borderRadius: 16,
+  border: "1px solid var(--line)",
+  background: "var(--card)",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+};
+
+const suggestRowStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "10px 12px",
+  borderRadius: 10,
+  background: "var(--field)",
+  fontSize: 14,
+  textAlign: "left",
 };
 
 const soonBoxStyle: React.CSSProperties = {

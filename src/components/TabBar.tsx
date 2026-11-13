@@ -6,7 +6,7 @@ const TABS: [TabKey, string, string][] = [
   ["home", "🏠", "홈"],
   ["people", "👤", "사람"],
   ["groups", "👥", "그룹"],
-  ["quotes", "💬", "글귀"],
+  ["quotes", "📚", "읽은 것"],
   ["briefing", "📋", "브리핑"],
   ["settings", "⚙️", "설정"],
 ];

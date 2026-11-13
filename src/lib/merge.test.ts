@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyVault, type Vault } from "../types";
 import { addAvoidTopic, addFavor, addFavorGiven, addGift, addIntention, addLike, addNote, createPerson, findPerson, updatePerson } from "./people";
+import { addBook, addBookQuote, findBook, updateBook } from "./books";
 import { mergeVaults } from "./merge";
 
 function withPerson(vault: Vault, name: string, id: string): Vault {
@@ -118,5 +119,20 @@ describe("mergeVaults", () => {
     expect(merged.customWisdom?.map((w) => w.id).sort()).toEqual(["w1", "w2"]);
     expect(merged.groupNames?.sort()).toEqual(["동호회", "헬스장"]);
     expect(merged.dailyIntention).toEqual({ text: "원격 다짐", date: "2026-01-02" });
+  });
+
+  it("책은 id 기준으로 합치고(더 최신 쪽 필드), 글귀는 양쪽 다 남긴다", () => {
+    let local = addBook(emptyVault(), "인간관계론", "데일 카네기", "b1");
+    local = addBookQuote(local, "b1", "로컬에서 뽑은 글귀");
+    local = updateBook(local, "b1", { rating: 3 });
+
+    let incoming = addBook(emptyVault(), "인간관계론", "데일 카네기", "b1");
+    incoming = addBookQuote(incoming, "b1", "원격에서 뽑은 글귀");
+    incoming = { ...incoming, books: incoming.books!.map((b) => ({ ...b, updatedAt: local.books![0].updatedAt + 1000, rating: 5 })) };
+
+    const merged = mergeVaults(local, incoming);
+    const book = findBook(merged, "b1");
+    expect(book?.rating).toBe(5);
+    expect(book?.quotes?.sort()).toEqual(["로컬에서 뽑은 글귀", "원격에서 뽑은 글귀"]);
   });
 });

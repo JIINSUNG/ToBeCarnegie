@@ -2,7 +2,7 @@
 // 백업 복원(합치기)과 2단계 Firebase 동기화가 공용으로 쓴다.
 // id가 있는 항목(notes/gifts/anniversaries)은 id 기준으로, id가 없는 단순 목록(likes 등)은
 // 합집합으로 합친다 — 두 기기에서 각자 추가한 내용이 한쪽만 "더 최신"이라고 통째로 사라지지 않게.
-import type { Anniversary, CustomWisdom, DailyIntention, Gift, Intention, Note, Person, Vault } from "../types";
+import type { Anniversary, Book, CustomWisdom, DailyIntention, Gift, Intention, Note, Person, Vault } from "../types";
 
 function mergeById<T extends { id: string; updatedAt: number }>(a: T[], b: T[]): T[] {
   const byId = new Map<string, T>();
@@ -75,6 +75,22 @@ function mergeDailyIntention(a?: DailyIntention, b?: DailyIntention): DailyInten
   return a.date >= b.date ? a : b;
 }
 
+function mergeBook(a: Book, b: Book): Book {
+  const newer = a.updatedAt >= b.updatedAt ? a : b;
+  return { ...newer, quotes: mergeStringList(a.quotes, b.quotes) };
+}
+
+/** 책도 사람처럼 id 기준으로 합치되, 글귀 목록은 양쪽 다 남긴다(합집합). */
+function mergeBooks(a: Book[] = [], b: Book[] = []): Book[] {
+  const byId = new Map<string, Book>();
+  for (const book of a) byId.set(book.id, book);
+  for (const book of b) {
+    const existing = byId.get(book.id);
+    byId.set(book.id, existing ? mergeBook(existing, book) : book);
+  }
+  return [...byId.values()];
+}
+
 export function mergeVaults(local: Vault, incoming: Vault): Vault {
   const byId = new Map<string, Person>();
   for (const person of local.people) byId.set(person.id, person);
@@ -87,6 +103,7 @@ export function mergeVaults(local: Vault, incoming: Vault): Vault {
   const customWisdom = mergeByIdUnion<CustomWisdom>(local.customWisdom ?? [], incoming.customWisdom ?? []);
   const groupNames = mergeStringList(local.groupNames, incoming.groupNames);
   const dailyIntention = mergeDailyIntention(local.dailyIntention, incoming.dailyIntention);
+  const books = mergeBooks(local.books, incoming.books);
 
   return {
     version: Math.max(local.version, incoming.version),
@@ -95,5 +112,6 @@ export function mergeVaults(local: Vault, incoming: Vault): Vault {
     ...(customWisdom.length ? { customWisdom } : {}),
     ...(groupNames.length ? { groupNames } : {}),
     ...(dailyIntention ? { dailyIntention } : {}),
+    ...(books.length ? { books } : {}),
   };
 }
