@@ -187,6 +187,63 @@ export interface Goal {
   updatedAt: number;
 }
 
+/** 기간 목표의 기간 — 연간·월간·주간. */
+export type GoalPeriod = "year" | "month" | "week";
+
+/** 목표를 향해 해본 시도 하나 — 뭘 했고, 결과가 어땠고, 뭘 배웠는지. */
+export interface GoalAttempt {
+  id: string;
+  at: number;
+  did: string;
+  result?: string;
+  /** 잘됐다/그저그랬다/아쉬웠다. */
+  outcome?: "good" | "meh" | "bad";
+  learned?: string;
+  updatedAt: number;
+}
+
+/** 연간·월간·주간 목표 하나. key는 기간 표시("2026", "2026-11", "2026-W46"). */
+export interface PeriodGoal {
+  id: string;
+  period: GoalPeriod;
+  key: string;
+  text: string;
+  /** 왜 이 목표를 세웠는지(선택). */
+  why?: string;
+  status: "doing" | "done" | "dropped";
+  doneAt?: number;
+  attempts: GoalAttempt[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** 기간 돌아보기 — 그 주·달·해를 마치며 잘한 점·아쉬운 점·다음엔. id는 "period:key"로 정해져 있어
+ * 두 기기에서 같은 기간을 돌아봐도 한 기록으로 합쳐진다. */
+export interface PeriodReflection {
+  id: string;
+  period: GoalPeriod;
+  key: string;
+  good: string;
+  bad: string;
+  next: string;
+  updatedAt: number;
+}
+
+/** 영향·영감 노트 — 내가 누군가에게 준 좋은 영향(gave), 내가 누군가에게 받은 영감(received). */
+export interface InfluenceStory {
+  id: string;
+  kind: "gave" | "received";
+  text: string;
+  /** 사람 목록에 있는 사람이면 그 id. */
+  personId?: string;
+  /** 목록에 없는 사람·책·영상 등 자유 입력. */
+  who?: string;
+  /** 거기서 배운 점·나도 해볼 것. */
+  lesson?: string;
+  at: number;
+  updatedAt: number;
+}
+
 /** 잠금 해제하면 메모리에만 떠 있는 평문 데이터 전체. */
 export interface Vault {
   version: number;
@@ -214,6 +271,15 @@ export interface Vault {
   goals?: Goal[];
   /** 스스로 고치고 싶은 점 — goals와 같은 구조, 의미만 "그만하고 싶은 것". */
   improvements?: Goal[];
+  /** 연간·월간·주간 목표(시도 기록 포함). */
+  periodGoals?: PeriodGoal[];
+  /** 기간 돌아보기. */
+  reflections?: PeriodReflection[];
+  /** 영향·영감 노트. */
+  stories?: InfluenceStory[];
+  /** 지운 항목 id → 지운 시각. 동기화 병합 때 다른 기기에 남은 옛 사본이 되살아나지 않게 한다
+   * (기간 목표·시도·돌아보기·영향 노트·연락 기록·물어볼 것에 쓴다). */
+  deletedIds?: Record<string, number>;
 }
 
 export function emptyVault(): Vault {

@@ -2,7 +2,7 @@
 // 백업 복원(합치기)과 2단계 Firebase 동기화가 공용으로 쓴다.
 // id가 있는 항목(notes/gifts/anniversaries)은 id 기준으로, id가 없는 단순 목록(likes 등)은
 // 합집합으로 합친다 — 두 기기에서 각자 추가한 내용이 한쪽만 "더 최신"이라고 통째로 사라지지 않게.
-import type { Anniversary, Book, CustomWisdom, DailyIntention, Gift, Goal, Intention, JournalEntry, Mission, MissionCount, Note, Person, Vault } from "../types";
+import type { Anniversary, Book, CustomWisdom, DailyIntention, Gift, Goal, Intention, JournalEntry, Mission, MissionCount, Note, PeriodGoal, PeriodReflection, InfluenceStory, Person, Vault } from "../types";
 
 function mergeById<T extends { id: string; updatedAt: number }>(a: T[], b: T[]): T[] {
   const byId = new Map<string, T>();
@@ -130,13 +130,58 @@ function mergeMissionCounts(
   return result;
 }
 
+/** 삭제 기록 합치기 — 같은 id면 더 나중에 지운 시각. */
+function mergeDeleted(a: Record<string, number> = {}, b: Record<string, number> = {}): Record<string, number> {
+  const out = { ...a };
+  for (const [id, at] of Object.entries(b)) out[id] = Math.max(out[id] ?? 0, at);
+  return out;
+}
+
+/** 지운 뒤에 다른 기기에서 고친 게 아니면(updatedAt이 지운 시각 이전이면) 지운 것으로 본다. */
+function alive<T extends { id: string; updatedAt: number }>(deleted: Record<string, number>) {
+  return (x: T) => !(x.id in deleted) || x.updatedAt > deleted[x.id];
+}
+
+/** 기간 목표 — 문구·상태는 더 최근에 고친 쪽, 시도 기록은 양쪽 것을 id로 합친다(각 기기에서 따로 남긴 시도가 다 살게). */
+function mergePeriodGoals(a: PeriodGoal[] = [], b: PeriodGoal[] = [], deleted: Record<string, number>): PeriodGoal[] {
+  const byId = new Map<string, PeriodGoal>();
+  for (const g of a) byId.set(g.id, g);
+  for (const g of b) {
+    const ex = byId.get(g.id);
+    if (!ex) byId.set(g.id, g);
+    else {
+      const newer = g.updatedAt > ex.updatedAt ? g : ex;
+      byId.set(g.id, { ...newer, attempts: mergeById(ex.attempts ?? [], g.attempts ?? []) });
+    }
+  }
+  return [...byId.values()]
+    .filter(alive(deleted))
+    .map((g) => ({ ...g, attempts: (g.attempts ?? []).filter(alive(deleted)).sort((x, y) => x.at - y.at) }))
+    .sort((x, y) => x.createdAt - y.createdAt);
+}
+
 export function mergeVaults(local: Vault, incoming: Vault): Vault {
+  const deletedIds = mergeDeleted(local.deletedIds, incoming.deletedIds);
   const byId = new Map<string, Person>();
   for (const person of local.people) byId.set(person.id, person);
   for (const person of incoming.people) {
     const existing = byId.get(person.id);
     byId.set(person.id, existing ? mergePerson(existing, person) : person);
   }
+  // 연락 기록·물어볼 것도 지운 건 되살리지 않는다.
+  for (const [id, p] of byId) {
+    if (!p.contacts && !p.followUps) continue;
+    byId.set(id, {
+      ...p,
+      ...(p.contacts ? { contacts: p.contacts.filter(alive(deletedIds)) } : {}),
+      ...(p.followUps ? { followUps: p.followUps.filter(alive(deletedIds)) } : {}),
+    });
+  }
+  const periodGoals = mergePeriodGoals(local.periodGoals, incoming.periodGoals, deletedIds);
+  const reflections = mergeById<PeriodReflection>(local.reflections ?? [], incoming.reflections ?? []).filter(alive(deletedIds));
+  const stories = mergeById<InfluenceStory>(local.stories ?? [], incoming.stories ?? [])
+    .filter(alive(deletedIds))
+    .sort((x, y) => x.at - y.at);
 
   const lastBackupAt = Math.max(local.lastBackupAt ?? 0, incoming.lastBackupAt ?? 0) || undefined;
   const customWisdom = mergeByIdUnion<CustomWisdom>(local.customWisdom ?? [], incoming.customWisdom ?? []);
@@ -168,5 +213,9 @@ export function mergeVaults(local: Vault, incoming: Vault): Vault {
     ...(Object.keys(affirmationDone).length ? { affirmationDone } : {}),
     ...(goals.length ? { goals } : {}),
     ...(improvements.length ? { improvements } : {}),
+    ...(periodGoals.length ? { periodGoals } : {}),
+    ...(reflections.length ? { reflections } : {}),
+    ...(stories.length ? { stories } : {}),
+    ...(Object.keys(deletedIds).length ? { deletedIds } : {}),
   };
 }

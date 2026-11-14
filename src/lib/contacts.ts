@@ -1,6 +1,7 @@
 // 연락 기록(언제·어떻게 연락했는지)과 "다음에 물어볼 것" 체크리스트 — 둘 다 사람(Person) 안에 쌓인다.
 // 연락 기록을 남기면 lastContactAt도 같이 맞춰서, 관계 온도·연락 뜸한 사람·오늘의 추천 연락이 그대로 동작한다.
 import { nanoid } from "nanoid";
+import { markDeleted } from "./period-goals";
 import type { ContactKind, ContactLog, FollowUp, Person, Vault } from "../types";
 
 export const CONTACT_KINDS: { kind: ContactKind; icon: string; label: string }[] = [
@@ -34,6 +35,10 @@ export function addContactLog(vault: Vault, personId: string, kind: ContactKind,
 /** 연락 기록을 지운다. 지운 게 마지막 연락이었다면 lastContactAt을 남은 기록 중 최신으로 되돌린다
  * (남은 기록이 없으면 연락 기록 없음 상태로). 그 외엔 lastContactAt을 건드리지 않는다. */
 export function deleteContactLog(vault: Vault, personId: string, logId: string): Vault {
+  return markDeleted(deleteContactLogRaw(vault, personId, logId), logId);
+}
+
+function deleteContactLogRaw(vault: Vault, personId: string, logId: string): Vault {
   return mapPerson(vault, personId, (p) => {
     const target = (p.contacts ?? []).find((l) => l.id === logId);
     const rest = (p.contacts ?? []).filter((l) => l.id !== logId);
@@ -86,7 +91,10 @@ export function toggleFollowUp(vault: Vault, personId: string, followUpId: strin
 }
 
 export function deleteFollowUp(vault: Vault, personId: string, followUpId: string): Vault {
-  return mapPerson(vault, personId, (p) => ({ ...p, followUps: (p.followUps ?? []).filter((f) => f.id !== followUpId) }));
+  return markDeleted(
+    mapPerson(vault, personId, (p) => ({ ...p, followUps: (p.followUps ?? []).filter((f) => f.id !== followUpId) })),
+    followUpId
+  );
 }
 
 /** 아직 안 물어본 것(먼저 적은 순). */
