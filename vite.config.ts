@@ -17,7 +17,10 @@ export default defineConfig({
         start_url: '/',
         display: 'standalone',
         background_color: '#f5f4f2',
-        theme_color: '#b5713f',
+        // 안드로이드에 설치한 앱은 이 색으로 하단 내비게이션(제스처) 바를 칠한다 — 강조색(주황)이면 탭바 아래에
+        // 주황 띠가 생겨서, 다크 모드 탭바 배경(--card)과 같은 색으로 둔다. 상단 상태바는 index.html의
+        // theme-color(라이트/다크별)가 따로 덮어쓴다.
+        theme_color: '#222425',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
