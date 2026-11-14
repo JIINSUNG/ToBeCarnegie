@@ -52,7 +52,9 @@ function Shell({ children, tabBar }: { children: React.ReactNode; tabBar?: React
           WebkitOverflowScrolling: "touch",
           paddingInline: 16,
           paddingTop: "env(safe-area-inset-top, 0px)",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          // 맨 아래 내용(일기 추가 버튼 등)이 하단 탭바에 딱 붙지 않게 여유를 둔다. 안전영역(제스처 바)은
+          // 탭바가 있을 땐 탭바가 이미 차지하지만, 탭바 없는 화면(사람 카드 등)에선 화면 끝이라 같이 더한다.
+          paddingBottom: "calc(32px + env(safe-area-inset-bottom, 0px))",
         }}
       >
         {children}
