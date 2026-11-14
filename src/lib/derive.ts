@@ -1,6 +1,7 @@
 // Vault에서 파생되는 값들: 다가오는 생일·기념일, 관계 온도, 연락 뜸한 사람, 브리핑, 백업 알림.
 // 전부 순수 함수 — 현재 시각(now)을 인자로 받아 테스트 가능하게 한다.
 import type { Anniversary, Person, Vault } from "../types";
+import { CONTACT_KIND_LABEL } from "./contacts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -131,7 +132,7 @@ export function suggestContact(vault: Vault, now: number = Date.now()): ContactS
   return null;
 }
 
-export type ActivityKind = "note" | "gift" | "anniversary" | "intention";
+export type ActivityKind = "note" | "gift" | "anniversary" | "intention" | "contact";
 
 export interface ActivityItem {
   person: Person;
@@ -145,6 +146,7 @@ export const ACTIVITY_KIND_LABEL: Record<ActivityKind, string> = {
   gift: "선물·경조사",
   anniversary: "기념일 추가",
   intention: "다짐",
+  contact: "연락",
 };
 
 /** 모든 사람에 걸쳐 최근에 적어둔 것들을 시간순으로 모아, "요즘 내가 뭘 기록했더라"를 한눈에
@@ -156,6 +158,7 @@ export function recentActivity(vault: Vault, limit = 20): ActivityItem[] {
     for (const g of person.gifts ?? []) items.push({ person, at: g.at, kind: "gift", text: g.text });
     for (const a of person.anniversaries ?? []) items.push({ person, at: a.updatedAt, kind: "anniversary", text: a.label });
     for (const i of person.intentions ?? []) items.push({ person, at: i.at, kind: "intention", text: i.text });
+    for (const c of person.contacts ?? []) items.push({ person, at: c.at, kind: "contact", text: [CONTACT_KIND_LABEL[c.kind], c.memo].filter(Boolean).join(" · ") });
   }
   return items.sort((a, b) => b.at - a.at).slice(0, limit);
 }

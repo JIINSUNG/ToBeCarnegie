@@ -43,6 +43,29 @@ export interface Intention {
   updatedAt: number;
 }
 
+/** 연락 종류 — 전화·메시지·만남·기타. */
+export type ContactKind = "call" | "message" | "meet" | "etc";
+
+/** 연락 한 번 — "언제, 어떻게" 연락했는지 쌓아서 사람 카드에서 흐름을 본다. */
+export interface ContactLog {
+  id: string;
+  at: number;
+  kind: ContactKind;
+  /** 무슨 얘기 했는지 한 줄(선택). */
+  memo?: string;
+  updatedAt: number;
+}
+
+/** 다음에 연락·만날 때 물어보거나 챙길 것 — 체크하면 끝. */
+export interface FollowUp {
+  id: string;
+  text: string;
+  done: boolean;
+  doneAt?: number;
+  at: number;
+  updatedAt: number;
+}
+
 export interface Person {
   id: string;
   name: string;
@@ -83,6 +106,10 @@ export interface Person {
   avoidTopics?: string[];
   /** "이 사람한텐 이렇게 하고 싶다" 다짐들 */
   intentions?: Intention[];
+  /** 연락 기록 — 쌓일 때마다 lastContactAt도 같이 맞춘다. 예전 데이터엔 없음(그땐 lastContactAt만 있었음). */
+  contacts?: ContactLog[];
+  /** 다음에 물어볼 것·챙길 것. */
+  followUps?: FollowUp[];
   createdAt: number;
   updatedAt: number;
 }

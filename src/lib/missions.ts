@@ -4,7 +4,7 @@
 //  - 횟수 미션(target 있음, 예: "고객 5명에게 연락", "물 5잔"): + / − 로 세고, 센 값이 target 이상이면 달성.
 //    센 값은 missionCount[date][id]에 둔다. 체크박스를 누르면 한 번에 target까지 채우거나 0으로 되돌린다.
 import { nanoid } from "nanoid";
-import { consecutiveStreak } from "./streak";
+import { consecutiveStreak, shiftDateStr } from "./streak";
 import type { Mission, Vault } from "../types";
 
 export const MAX_MISSION_TARGET = 999;
@@ -99,4 +99,36 @@ export function missionStreak(vault: Vault, id: string, date: string): number {
 /** "3 / 5명" 같은 진행 표시. */
 export function formatMissionProgress(mission: Mission, count: number): string {
   return `${count} / ${mission.target ?? 1}${mission.unit ?? ""}`;
+}
+
+export interface MissionDay {
+  date: string;
+  /** 그날 있던 미션 수(그날 끝나기 전에 만든 미션만 센다). */
+  total: number;
+  done: number;
+}
+
+function endOfDayMs(date: string): number {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(y, m - 1, d + 1).getTime() - 1;
+}
+
+/** endDate(포함)로 끝나는 최근 days일의 날짜별 미션 달성 — 달력·주간 달성률용. 오래된 날이 앞. */
+export function missionHistory(vault: Vault, endDate: string, days: number): MissionDay[] {
+  const missions = vault.missions ?? [];
+  const out: MissionDay[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const date = shiftDateStr(endDate, -i);
+    const end = endOfDayMs(date);
+    const alive = missions.filter((m) => m.createdAt <= end);
+    out.push({ date, total: alive.length, done: alive.filter((m) => isMissionDone(vault, m.id, date)).length });
+  }
+  return out;
+}
+
+/** 기간 전체 달성률(0~1) — 미션이 있던 날만 센다. 미션이 하나도 없던 기간이면 null. */
+export function missionRate(history: MissionDay[]): number | null {
+  const total = history.reduce((s, d) => s + d.total, 0);
+  if (!total) return null;
+  return history.reduce((s, d) => s + d.done, 0) / total;
 }

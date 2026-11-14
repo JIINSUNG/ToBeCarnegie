@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyVault } from "../types";
-import { addMission, formatMissionProgress, isMissionDone, missionCount, missionStreak, removeMission, stepMissionCount, toggleMissionDone, updateMission } from "./missions";
+import { addMission, formatMissionProgress, isMissionDone, missionCount, missionStreak, removeMission, stepMissionCount, toggleMissionDone, updateMission, missionHistory, missionRate } from "./missions";
 
 describe("missions", () => {
   it("addMission으로 미션을 추가하면 목록에 하나 늘어난다", () => {
@@ -111,5 +111,25 @@ describe("횟수 미션", () => {
 
   it("formatMissionProgress", () => {
     expect(formatMissionProgress({ id: "m", text: "", target: 5, unit: "명", createdAt: 0 }, 3)).toBe("3 / 5명");
+  });
+});
+
+describe("미션 달성 기록(달력)", () => {
+  it("날짜별로 그날 있던 미션 중 몇 개 달성했는지 센다", () => {
+    let v = addMission(emptyVault(), "a", "a");
+    v = { ...v, missions: v.missions!.map((m) => ({ ...m, createdAt: new Date(2026, 10, 1).getTime() })) };
+    v = addMission(v, "물", "b", { target: 2 });
+    v = { ...v, missions: v.missions!.map((m) => (m.id === "b" ? { ...m, createdAt: new Date(2026, 10, 13, 9).getTime() } : m)) };
+    v = toggleMissionDone(v, "a", "2026-11-12");
+    v = toggleMissionDone(v, "a", "2026-11-13");
+    v = stepMissionCount(v, "b", "2026-11-13", 2);
+    const h = missionHistory(v, "2026-11-14", 3);
+    expect(h).toEqual([
+      { date: "2026-11-12", total: 1, done: 1 }, // b는 아직 안 만듦
+      { date: "2026-11-13", total: 2, done: 2 },
+      { date: "2026-11-14", total: 2, done: 0 },
+    ]);
+    expect(missionRate(h)).toBeCloseTo(3 / 5);
+    expect(missionRate(missionHistory(emptyVault(), "2026-11-14", 7))).toBeNull();
   });
 });

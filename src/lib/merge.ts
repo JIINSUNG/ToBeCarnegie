@@ -51,6 +51,8 @@ function mergePerson(a: Person, b: Person): Person {
     gifts: mergeGifts(a.gifts ?? [], b.gifts ?? []),
     anniversaries: mergeAnniversaries(a.anniversaries ?? [], b.anniversaries ?? []),
     intentions: mergeIntentions(a.intentions ?? [], b.intentions ?? []),
+    contacts: mergeById(a.contacts ?? [], b.contacts ?? []).sort((x, y) => x.at - y.at),
+    followUps: mergeById(a.followUps ?? [], b.followUps ?? []).sort((x, y) => x.at - y.at),
     likes: mergeStringList(a.likes, b.likes),
     dislikes: mergeStringList(a.dislikes, b.dislikes),
     favors: mergeStringList(a.favors, b.favors),
