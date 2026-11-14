@@ -2,7 +2,7 @@
 // 백업 복원(합치기)과 2단계 Firebase 동기화가 공용으로 쓴다.
 // id가 있는 항목(notes/gifts/anniversaries)은 id 기준으로, id가 없는 단순 목록(likes 등)은
 // 합집합으로 합친다 — 두 기기에서 각자 추가한 내용이 한쪽만 "더 최신"이라고 통째로 사라지지 않게.
-import type { Anniversary, Book, CustomWisdom, DailyIntention, Gift, Goal, Intention, JournalEntry, Mission, MissionCount, Note, PeriodGoal, PeriodReflection, InfluenceStory, Person, Vault } from "../types";
+import type { Anniversary, Book, CustomWisdom, DailyIntention, Gift, Goal, Intention, JournalEntry, Mission, MissionCount, Note, PeriodGoal, PeriodReflection, InfluenceStory, PrincipleWeek, PrinciplePractice, Appreciation, Person, Vault } from "../types";
 
 function mergeById<T extends { id: string; updatedAt: number }>(a: T[], b: T[]): T[] {
   const byId = new Map<string, T>();
@@ -179,6 +179,13 @@ export function mergeVaults(local: Vault, incoming: Vault): Vault {
   }
   const periodGoals = mergePeriodGoals(local.periodGoals, incoming.periodGoals, deletedIds);
   const reflections = mergeById<PeriodReflection>(local.reflections ?? [], incoming.reflections ?? []).filter(alive(deletedIds));
+  const principleWeeks = mergeById<PrincipleWeek>(local.principleWeeks ?? [], incoming.principleWeeks ?? []);
+  const principlePractices = mergeById<PrinciplePractice>(local.principlePractices ?? [], incoming.principlePractices ?? [])
+    .filter(alive(deletedIds))
+    .sort((x, y) => x.at - y.at);
+  const appreciations = mergeById<Appreciation>(local.appreciations ?? [], incoming.appreciations ?? [])
+    .filter(alive(deletedIds))
+    .sort((x, y) => x.at - y.at);
   const stories = mergeById<InfluenceStory>(local.stories ?? [], incoming.stories ?? [])
     .filter(alive(deletedIds))
     .sort((x, y) => x.at - y.at);
@@ -216,6 +223,9 @@ export function mergeVaults(local: Vault, incoming: Vault): Vault {
     ...(periodGoals.length ? { periodGoals } : {}),
     ...(reflections.length ? { reflections } : {}),
     ...(stories.length ? { stories } : {}),
+    ...(principleWeeks.length ? { principleWeeks } : {}),
+    ...(principlePractices.length ? { principlePractices } : {}),
+    ...(appreciations.length ? { appreciations } : {}),
     ...(Object.keys(deletedIds).length ? { deletedIds } : {}),
   };
 }

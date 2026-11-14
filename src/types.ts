@@ -244,6 +244,38 @@ export interface InfluenceStory {
   updatedAt: number;
 }
 
+/** 그 주에 연습하기로 고른 카네기 원칙. id는 주 키("2026-W46")라 두 기기에서 골라도 한 기록으로 합쳐진다. */
+export interface PrincipleWeek {
+  id: string;
+  principleId: string;
+  updatedAt: number;
+}
+
+/** 원칙을 실천한 순간 하나. */
+export interface PrinciplePractice {
+  id: string;
+  weekKey: string;
+  principleId: string;
+  text: string;
+  personId?: string;
+  at: number;
+  updatedAt: number;
+}
+
+/** 감사·칭찬 기록 — 누구에게 고마웠는지(thanks), 누구를 칭찬했는지(praise). */
+export interface Appreciation {
+  id: string;
+  kind: "thanks" | "praise";
+  text: string;
+  personId?: string;
+  /** 목록에 없는 사람이면 자유 입력. */
+  who?: string;
+  /** 그 마음을 상대에게 직접 표현했는지. */
+  expressed?: boolean;
+  at: number;
+  updatedAt: number;
+}
+
 /** 잠금 해제하면 메모리에만 떠 있는 평문 데이터 전체. */
 export interface Vault {
   version: number;
@@ -277,6 +309,12 @@ export interface Vault {
   reflections?: PeriodReflection[];
   /** 영향·영감 노트. */
   stories?: InfluenceStory[];
+  /** 주마다 고른 카네기 원칙. */
+  principleWeeks?: PrincipleWeek[];
+  /** 원칙 실천 기록. */
+  principlePractices?: PrinciplePractice[];
+  /** 감사·칭찬 기록. */
+  appreciations?: Appreciation[];
   /** 지운 항목 id → 지운 시각. 동기화 병합 때 다른 기기에 남은 옛 사본이 되살아나지 않게 한다
    * (기간 목표·시도·돌아보기·영향 노트·연락 기록·물어볼 것에 쓴다). */
   deletedIds?: Record<string, number>;
