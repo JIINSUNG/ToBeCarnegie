@@ -120,11 +120,25 @@ export interface DailyIntention {
   date: string;
 }
 
-/** 스스로에게 주는 반복 미션 — 한 번 만들면 매일 다시 나타나고, 그날그날 체크한다. */
+/** 스스로에게 주는 반복 미션 — 한 번 만들면 매일 다시 나타나고, 그날그날 체크한다.
+ * target이 있으면 "횟수 미션"(예: 고객 5명에게 연락, 물 5잔)으로, + / − 로 세다가 target에 닿으면 달성.
+ * 없으면 예전처럼 체크박스 하나로 달성/미달성만 표시한다. (구호 affirmations도 이 타입을 쓰지만 target은 안 쓴다.) */
 export interface Mission {
   id: string;
   text: string;
+  /** 하루 목표 횟수(1 이상). 없으면 체크박스 미션. */
+  target?: number;
+  /** 횟수 단위(예: "명", "잔", "쪽") — 표시용, 선택. */
+  unit?: string;
   createdAt: number;
+  /** 문구·목표를 고친 시각 — 동기화 때 더 최근에 고친 쪽을 남기려고. 예전 데이터엔 없어서 없으면 createdAt으로 본다. */
+  updatedAt?: number;
+}
+
+/** 횟수 미션의 그날 센 값 — at(마지막으로 바꾼 시각)으로 두 기기 값 중 최신을 고른다. */
+export interface MissionCount {
+  n: number;
+  at: number;
 }
 
 /** 성장 일기 한 줄 — 프롬프트에 답했거나 자유롭게 쓴 기록. */
@@ -162,6 +176,8 @@ export interface Vault {
   missions?: Mission[];
   /** 날짜별로 그날 완료한 미션 id 목록. */
   missionDone?: Record<string, string[]>;
+  /** 날짜별 → 미션 id별 그날 센 횟수(횟수 미션만). */
+  missionCount?: Record<string, Record<string, MissionCount>>;
   /** 성장 일기. */
   journal?: JournalEntry[];
   /** 매일 아침 외치는 구호들 — 구조는 미션과 같다(문구 + 그날 외쳤는지). */

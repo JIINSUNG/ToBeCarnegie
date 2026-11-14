@@ -2,7 +2,7 @@
 // 백업 복원(합치기)과 2단계 Firebase 동기화가 공용으로 쓴다.
 // id가 있는 항목(notes/gifts/anniversaries)은 id 기준으로, id가 없는 단순 목록(likes 등)은
 // 합집합으로 합친다 — 두 기기에서 각자 추가한 내용이 한쪽만 "더 최신"이라고 통째로 사라지지 않게.
-import type { Anniversary, Book, CustomWisdom, DailyIntention, Gift, Goal, Intention, JournalEntry, Mission, Note, Person, Vault } from "../types";
+import type { Anniversary, Book, CustomWisdom, DailyIntention, Gift, Goal, Intention, JournalEntry, Mission, MissionCount, Note, Person, Vault } from "../types";
 
 function mergeById<T extends { id: string; updatedAt: number }>(a: T[], b: T[]): T[] {
   const byId = new Map<string, T>();
@@ -99,6 +99,35 @@ function mergeDatedIdSet(a: Record<string, string[]> = {}, b: Record<string, str
   return result;
 }
 
+/** 미션은 문구·목표 횟수를 고칠 수 있어서, 같은 id면 더 최근에 고친 쪽(updatedAt, 없으면 createdAt)을 남긴다. */
+function mergeMissions(a: Mission[] = [], b: Mission[] = []): Mission[] {
+  const stamp = (m: Mission) => m.updatedAt ?? m.createdAt;
+  const byId = new Map<string, Mission>();
+  for (const m of a) byId.set(m.id, m);
+  for (const m of b) {
+    const existing = byId.get(m.id);
+    if (!existing || stamp(m) > stamp(existing)) byId.set(m.id, m);
+  }
+  return [...byId.values()];
+}
+
+/** 횟수 미션의 날짜별 센 값 — 같은 날·같은 미션이면 마지막으로 바꾼(at이 큰) 쪽을 남긴다.
+ * 합계나 최댓값으로 합치면 한쪽 기기에서 − 로 줄인 게 되살아나서, "최근 값 우선"으로 한다. */
+function mergeMissionCounts(
+  a: Record<string, Record<string, MissionCount>> = {},
+  b: Record<string, Record<string, MissionCount>> = {}
+): Record<string, Record<string, MissionCount>> {
+  const result: Record<string, Record<string, MissionCount>> = {};
+  for (const d of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const day: Record<string, MissionCount> = { ...a[d] };
+    for (const [id, c] of Object.entries(b[d] ?? {})) {
+      if (!day[id] || c.at > day[id].at) day[id] = c;
+    }
+    result[d] = day;
+  }
+  return result;
+}
+
 export function mergeVaults(local: Vault, incoming: Vault): Vault {
   const byId = new Map<string, Person>();
   for (const person of local.people) byId.set(person.id, person);
@@ -112,8 +141,9 @@ export function mergeVaults(local: Vault, incoming: Vault): Vault {
   const groupNames = mergeStringList(local.groupNames, incoming.groupNames);
   const dailyIntention = mergeDailyIntention(local.dailyIntention, incoming.dailyIntention);
   const books = mergeBooks(local.books, incoming.books);
-  const missions = mergeByIdUnion<Mission>(local.missions ?? [], incoming.missions ?? []);
+  const missions = mergeMissions(local.missions, incoming.missions);
   const missionDone = mergeDatedIdSet(local.missionDone, incoming.missionDone);
+  const missionCount = mergeMissionCounts(local.missionCount, incoming.missionCount);
   const journal = mergeByIdUnion<JournalEntry>(local.journal ?? [], incoming.journal ?? []);
   const affirmations = mergeByIdUnion<Mission>(local.affirmations ?? [], incoming.affirmations ?? []);
   const affirmationDone = mergeDatedIdSet(local.affirmationDone, incoming.affirmationDone);
@@ -130,6 +160,7 @@ export function mergeVaults(local: Vault, incoming: Vault): Vault {
     ...(books.length ? { books } : {}),
     ...(missions.length ? { missions } : {}),
     ...(Object.keys(missionDone).length ? { missionDone } : {}),
+    ...(Object.keys(missionCount).length ? { missionCount } : {}),
     ...(journal.length ? { journal } : {}),
     ...(affirmations.length ? { affirmations } : {}),
     ...(Object.keys(affirmationDone).length ? { affirmationDone } : {}),

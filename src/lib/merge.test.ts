@@ -182,3 +182,19 @@ describe("mergeVaults", () => {
     expect(merged.improvements?.map((g) => g.id)).toEqual(["i1"]);
   });
 });
+
+describe("mergeVaults — 횟수 미션", () => {
+  it("같은 날 같은 미션의 센 값은 마지막으로 바꾼 쪽을 남긴다(줄인 것도 살아남게)", () => {
+    const local = { version: 1, people: [], missionCount: { "2026-11-14": { m1: { n: 4, at: 10 } } } };
+    const incoming = { version: 1, people: [], missionCount: { "2026-11-14": { m1: { n: 2, at: 20 }, m2: { n: 1, at: 5 } } } };
+    const merged = mergeVaults(local, incoming);
+    expect(merged.missionCount!["2026-11-14"]).toEqual({ m1: { n: 2, at: 20 }, m2: { n: 1, at: 5 } });
+  });
+
+  it("미션 목표를 고친 쪽(updatedAt이 큰 쪽)이 남는다", () => {
+    const local = { version: 1, people: [], missions: [{ id: "m1", text: "물", target: 5, createdAt: 1, updatedAt: 1 }] };
+    const incoming = { version: 1, people: [], missions: [{ id: "m1", text: "물", target: 8, createdAt: 1, updatedAt: 9 }] };
+    expect(mergeVaults(local, incoming).missions![0].target).toBe(8);
+    expect(mergeVaults(incoming, local).missions![0].target).toBe(8);
+  });
+});
