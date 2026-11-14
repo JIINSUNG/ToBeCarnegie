@@ -4,6 +4,7 @@ import { addMission, formatMissionProgress, isMissionDone, MAX_MISSION_TARGET, m
 import { addAffirmation, affirmationStreak, isAffirmationDone, removeAffirmation, toggleAffirmationDone } from "../lib/affirmations";
 import { addJournalEntry, JOURNAL_PROMPTS, pickJournalPrompt, removeJournalEntry } from "../lib/journal";
 import { todayDateStr } from "../lib/derive";
+import { MissionCalendar } from "../components/MissionCalendar";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
 import { formatDate } from "../lib/format";
 import { headingStyle, linkStyle, primaryBtnStyle, sectionStyle, stickyHeaderStyle } from "../lib/layout";
@@ -165,6 +166,8 @@ export function Growth({ onBack }: { onBack: () => void }) {
         </div>
         {missionError && <p style={{ color: "var(--warn)", fontSize: 12.5, margin: 0 }}>{missionError}</p>}
       </section>
+
+      {vault && <MissionCalendar vault={vault} today={date} />}
 
       <section style={sectionStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

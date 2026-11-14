@@ -7,6 +7,7 @@ import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
 import { pickRandomWisdom } from "../lib/wisdom";
 import { suggestContact, todayDateStr, upcomingAnniversaries, upcomingBirthdays } from "../lib/derive";
 import { isMissionDone } from "../lib/missions";
+import { openFollowUps } from "../lib/contacts";
 import { stickyHeaderStyle } from "../lib/layout";
 
 const SOON_WINDOW_DAYS = 7;
@@ -183,7 +184,10 @@ export function Home({
           <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--fg2)" }}>📞 오늘은 이분께 연락해볼까요</span>
           <button type="button" onClick={() => onOpenPerson(suggestion.person.id)} style={suggestRowStyle}>
             <span style={{ fontWeight: 600 }}>{suggestion.person.name}</span>
-            <span style={{ color: "var(--muted)", fontSize: 12.5 }}>{suggestion.reason}</span>
+            <span style={{ color: "var(--muted)", fontSize: 12.5 }}>
+              {suggestion.reason}
+              {openFollowUps(suggestion.person).length > 0 && ` · 🙋 물어볼 것 ${openFollowUps(suggestion.person).length}개`}
+            </span>
           </button>
         </div>
       )}

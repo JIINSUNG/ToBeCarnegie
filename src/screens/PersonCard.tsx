@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSession } from "../session";
 import { ChipListField } from "../components/ChipListField";
+import { ContactSection, FollowUpSection } from "../components/ContactSection";
 import {
   addAnniversary,
   addAvoidTopic,
@@ -24,9 +25,7 @@ import {
   removeFavorGiven,
   removeLike,
   setGiftRepaidWith,
-  setLastContact,
   toggleGiftRepaid,
-  touchLastContact,
 } from "../lib/people";
 import { relationshipTemp, RELATIONSHIP_TEMP_LABEL, type RelationshipTemp } from "../lib/derive";
 import { pickWisdomForPerson } from "../lib/wisdom";
@@ -188,7 +187,6 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
   const [giftDirection, setGiftDirection] = useState<"received" | "given">("received");
   const [giftAmount, setGiftAmount] = useState("");
   const [giftError, setGiftError] = useState<string | null>(null);
-  const [prevContactAt, setPrevContactAt] = useState<number | undefined | null>(null);
   const person = vault ? findPerson(vault, id) : undefined;
 
   if (!person) {
@@ -301,30 +299,8 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
         </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <button
-          type="button"
-          onClick={() => {
-            setPrevContactAt(person.lastContactAt ?? undefined);
-            update((v) => touchLastContact(v, id));
-          }}
-          style={{ alignSelf: "flex-start", padding: "7px 14px", borderRadius: 999, border: "1px solid var(--line)", background: "var(--field)", fontSize: 12.5 }}
-        >
-          오늘 연락했어요
-        </button>
-        {prevContactAt !== null && (
-          <button
-            type="button"
-            onClick={() => {
-              update((v) => setLastContact(v, id, prevContactAt));
-              setPrevContactAt(null);
-            }}
-            style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 12.5 }}
-          >
-            취소
-          </button>
-        )}
-      </div>
+      <FollowUpSection person={person} />
+      <ContactSection person={person} />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: 14, borderRadius: 16, background: "var(--accent)" }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent-fg)", opacity: 0.85 }}>{person.name}에게 어울리는 말</span>
