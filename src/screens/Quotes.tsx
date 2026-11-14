@@ -142,7 +142,7 @@ export function Quotes({ onBack }: { onBack: () => void }) {
         <button type="button" onClick={onBack} style={linkStyle}>
           ← 홈
         </button>
-        <h1 style={{ fontSize: 18, margin: 0 }}>읽은 것</h1>
+        <h1 style={{ fontSize: 18, margin: 0 }}>독서</h1>
         <span style={{ width: 40 }} />
       </div>
 
