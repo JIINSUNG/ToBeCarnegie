@@ -36,6 +36,8 @@ src/
   lib/missions.ts     오늘의 미션(매일 반복) — 체크 미션 + 횟수 미션(target·unit, +/− 카운트) CRUD + 연속일수
   lib/affirmations.ts 오늘의 구호(매일 반복 체크) — missions.ts와 같은 구조
   lib/goals.ts        목표·고치고 싶은 점(한 번 달성하면 끝) CRUD — 같은 Goal 타입, 필드만 다름
+  lib/period.ts       기간 키(연 "2026"·월 "2026-11"·ISO 주 "2026-W46") 계산·이동·표시
+  lib/period-goals.ts 연간·월간·주간 목표 + 시도 기록 + 기간 돌아보기 + 영향·영감 노트, markDeleted(삭제 기록)
   lib/journal.ts       성장 일기(프롬프트 + 자유 기록)
   lib/streak.ts        날짜 연산 + "연속 완료일" 계산 — missions/affirmations 공용
   lib/format.ts        날짜 표시(formatDate/timeAgo) — 화면 여러 곳이 공용으로 씀
@@ -44,8 +46,13 @@ src/
   screens/              Lock, Home, People, PersonCard, PersonEdit, Briefing, Settings,
                         Quotes(글귀+독후감), Growth(미션+구호+일기), Goals(목표+고칠점)
   components/           TabBar, ChipListField(좋아요/싫어요/책 글귀 등 공용 칩 입력),
-                        ContactSection(연락 기록·물어볼 것), MissionCalendar(5주 미션 달성 달력)
+                        ContactSection(연락 기록·물어볼 것), MissionCalendar(5주 미션 달성 달력),
+                        PeriodGoals(기간 목표·시도·돌아보기), Stories(영향·영감 노트 — 사람 카드에도)
 ```
+
+## 동기화 병합 규칙
+- 새 컬렉션을 Vault에 추가하면 **반드시 `lib/merge.ts`의 `mergeVaults`에도 넣는다** — 안 넣으면 동기화·백업 복원 때 통째로 사라진다.
+- 지울 수 있는 새 항목은 `markDeleted`로 `deletedIds`에 남기고, 병합에서 `alive(deletedIds)`로 거른다(다른 기기 사본이 되살아나는 것 방지).
 
 ## 품질
 - 로직(lib/)은 화면과 분리하고 Vitest 테스트를 붙인다.

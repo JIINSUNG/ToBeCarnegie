@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSession } from "../session";
 import { ChipListField } from "../components/ChipListField";
 import { ContactSection, FollowUpSection } from "../components/ContactSection";
+import { Stories } from "../components/Stories";
 import {
   addAnniversary,
   addAvoidTopic,
@@ -301,6 +302,7 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
 
       <FollowUpSection person={person} />
       <ContactSection person={person} />
+      <Stories personId={person.id} compact />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: 14, borderRadius: 16, background: "var(--accent)" }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent-fg)", opacity: 0.85 }}>{person.name}에게 어울리는 말</span>
