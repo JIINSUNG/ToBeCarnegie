@@ -174,7 +174,7 @@ export function People({
 
       {managingGroups && (
         <div style={groupPanelStyle}>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="input-row">
             <input
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}

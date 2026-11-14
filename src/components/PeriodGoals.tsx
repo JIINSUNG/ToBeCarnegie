@@ -136,7 +136,7 @@ export function PeriodGoals() {
         ))}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 4 }}>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="input-row">
             <input
               value={draft}
               onChange={(e) => {

@@ -216,7 +216,7 @@ export function Home({
 
       <div style={quickBoxStyle}>
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--fg2)" }}>한 줄 빠른 기록</span>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="input-row">
           <input
             placeholder="민수 - 커피는 아메리카노"
             value={quick}

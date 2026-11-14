@@ -71,7 +71,7 @@ function GoalSection({
       </div>
       <p style={{ color: "var(--muted)", fontSize: 12.5, margin: 0 }}>{hint}</p>
 
-      <div style={{ display: "flex", gap: 8 }}>
+      <div className="input-row">
         <input
           value={draft}
           onChange={(e) => {

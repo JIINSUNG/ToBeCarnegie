@@ -59,7 +59,7 @@ export function FollowUpSection({ person }: { person: Person }) {
           </button>
         </div>
       ))}
-      <div style={{ display: "flex", gap: 8 }}>
+      <div className="input-row">
         <input
           value={draft}
           onChange={(e) => {

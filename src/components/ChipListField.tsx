@@ -41,7 +41,7 @@ export function ChipListField({
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <span style={{ fontSize: 13, color: tone === "warn" ? "var(--warn)" : "var(--fg2)", fontWeight: 600 }}>{label}</span>
       {hint && <p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>{hint}</p>}
-      <div style={{ display: "flex", gap: 8 }}>
+      <div className="input-row">
         <input
           value={draft}
           placeholder={placeholder}

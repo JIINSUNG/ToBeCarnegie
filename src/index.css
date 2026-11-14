@@ -114,3 +114,22 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* 입력칸 + "추가/기록" 버튼 줄 — 버튼을 입력칸 옆이 아니라 아래 오른쪽에 둔다. 폭이 좁거나 글자를 키운 폰
+   (갤럭시 Z 플립 등)에서 버튼이 카드 밖으로 밀려 잘리던 걸 원천적으로 막고, 입력칸도 한 줄을 다 쓴다. */
+.input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.input-row > input,
+.input-row > textarea,
+.input-row > select {
+  flex: none !important;
+  width: 100% !important;
+}
+.input-row > button {
+  align-self: flex-end !important;
+  min-height: 40px;
+  padding-inline: 20px !important;
+}

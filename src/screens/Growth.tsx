@@ -212,7 +212,7 @@ export function Growth({ onBack }: { onBack: () => void }) {
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="input-row">
           <input
             value={affirmationDraft}
             onChange={(e) => {
