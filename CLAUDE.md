@@ -1,6 +1,10 @@
-# 관계노트 — 프로젝트 규칙
+# 더나은 — 프로젝트 규칙
 
-지인에게 들은 생일·취향·관심사·근황을 빠르게 적어 두고, 다음에 만나기 전에 꺼내 보는 **나만 보는 관계 메모 앱**.
+사람을 더 챙기고, 나를 돌아보며 더 나은 사람이 되는 걸 돕는 **나만 보는 개인 성장 앱**.
+지인에게 들은 생일·취향·관심사·근황을 기록하는 관계 관리(원래 "관계노트")에, 오늘의 미션·구호·
+성장 일기·목표 체크리스트 같은 자기계발 도구를 더했다. 앱 이름이 "관계노트"에서 "더나은"으로
+바뀐 역사가 있어 코드 곳곳에 옛 이름 흔적이 남아있을 수 있다(예: 폴더명 human_relationship,
+백업 파일의 레거시 app id) — 기능엔 지장 없으니 일부러 지우지 않는다.
 UI 문구는 전부 한국어 존댓말. 모바일 우선(390px), 한 손 조작.
 
 ## 절대 원칙
@@ -22,16 +26,23 @@ src/
   types.ts            데이터 타입
   lib/crypto.ts       키 생성·감싸기·암복호화 (Vault), exportKeyRaw/importKeyRaw(동기화용 키 공유)
   lib/storage.ts      IndexedDB 저장/불러오기, persist 요청
-  lib/backup.ts       백업 파일·코드 내보내기, 복원(합치기/덮어쓰기)
+  lib/backup.ts       백업 파일·코드 내보내기, 복원(합치기/덮어쓰기) — 레거시 앱 id도 복원 허용
   lib/merge.ts        항목별 updatedAt 최신 우선 병합 (백업 복원·동기화 공용)
   lib/filter.ts       입력 필터
   lib/parser.ts       한 줄 기록 파서
   lib/derive.ts       다가오는 생일, 관계 온도, 연락 뜸한 사람, 오늘의 추천 연락, 최근 활동, 브리핑, 백업 알림
   lib/books.ts        읽은 책(독후감·글귀) CRUD
-  lib/format.ts       날짜 표시(formatDate/timeAgo) — 화면 여러 곳이 공용으로 씀
-  lib/sync.ts         Firebase 동기화 — 실시간 구독 + 자동 올리기 (2단계), 오프라인 캐시 켜둠
-  screens/            Lock, Home, People, PersonCard, PersonEdit, Briefing, Settings, Quotes(글귀+독후감)
-  components/         TabBar, ChipListField(좋아요/싫어요/책 글귀 등 공용 칩 입력)
+  lib/missions.ts     오늘의 미션(매일 반복 체크) CRUD + 연속일수
+  lib/affirmations.ts 오늘의 구호(매일 반복 체크) — missions.ts와 같은 구조
+  lib/goals.ts        목표·고치고 싶은 점(한 번 달성하면 끝) CRUD — 같은 Goal 타입, 필드만 다름
+  lib/journal.ts       성장 일기(프롬프트 + 자유 기록)
+  lib/streak.ts        날짜 연산 + "연속 완료일" 계산 — missions/affirmations 공용
+  lib/format.ts        날짜 표시(formatDate/timeAgo) — 화면 여러 곳이 공용으로 씀
+  lib/layout.ts         공용 스타일(sticky 헤더, 뒤로가기 링크, 카드 섹션, 기본 버튼)
+  lib/sync.ts           Firebase 동기화 — 실시간 구독 + 자동 올리기 (2단계), 오프라인 캐시 켜둠
+  screens/              Lock, Home, People, PersonCard, PersonEdit, Briefing, Settings,
+                        Quotes(글귀+독후감), Growth(미션+구호+일기), Goals(목표+고칠점)
+  components/           TabBar, ChipListField(좋아요/싫어요/책 글귀 등 공용 칩 입력)
 ```
 
 ## 품질

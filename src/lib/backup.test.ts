@@ -26,10 +26,16 @@ describe("backup file round-trip", () => {
     expect(parsed).toEqual(file);
   });
 
-  it("관계노트 백업 파일이 아니면 에러", () => {
+  it("더나은 백업 파일이 아니면 에러", () => {
     expect(() => parseBackupFile(JSON.stringify({ app: "다른앱", vault: sampleStored }))).toThrow();
     expect(() => parseBackupFile("이건 json이 아니야")).toThrow();
-    expect(() => parseBackupFile(JSON.stringify({ app: "관계노트-백업" }))).toThrow();
+    expect(() => parseBackupFile(JSON.stringify({ app: "더나은-백업" }))).toThrow();
+  });
+
+  it("앱 이름을 바꾸기 전(관계노트)에 만든 백업 파일도 그대로 복원된다", () => {
+    const legacy = JSON.stringify({ app: "관계노트-백업", formatVersion: 1, exportedAt: 1000, vault: sampleStored });
+    const parsed = parseBackupFile(legacy);
+    expect(parsed.vault).toEqual(sampleStored);
   });
 });
 

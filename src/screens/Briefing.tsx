@@ -1,7 +1,7 @@
 import { useSession } from "../session";
 import { ACTIVITY_KIND_LABEL, buildBriefing } from "../lib/derive";
 import { timeAgo } from "../lib/format";
-import { linkStyle, stickyHeaderStyle } from "../lib/layout";
+import { headingStyle, linkStyle, sectionStyle, stickyHeaderStyle } from "../lib/layout";
 
 export function Briefing({ onOpenPerson, onSettings, onBack }: { onOpenPerson: (id: string) => void; onSettings: () => void; onBack: () => void }) {
   const { vault } = useSession();
@@ -96,8 +96,6 @@ export function Briefing({ onOpenPerson, onSettings, onBack }: { onOpenPerson: (
 }
 
 const linkBtnStyle: React.CSSProperties = { background: "none", border: "none", color: "var(--accent)", fontSize: 13, padding: 0, alignSelf: "flex-start" };
-const sectionStyle: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 8, padding: 14, borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--card)" };
-const headingStyle: React.CSSProperties = { fontSize: 15, margin: 0 };
 const rowStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",

@@ -14,3 +14,28 @@ export const stickyHeaderStyle: React.CSSProperties = {
 
 /** 헤더의 "← 홈"/"← 목록" 같은 뒤로가기 링크 버튼 — 전엔 화면마다 똑같은 객체가 따로 있었다. */
 export const linkStyle: React.CSSProperties = { background: "none", border: "none", color: "var(--fg2)", fontSize: 14, padding: 4 };
+
+// 화면마다 거의 똑같이 복붙돼 있던 카드 섹션·제목·기본 버튼 스타일 — 전엔 Briefing/Quotes/Settings/
+// Growth에 각자 따로 있었다. PersonCard는 그림자·여백이 의도적으로 달라서 그대로 따로 둔다.
+export const sectionStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+  padding: 14,
+  borderRadius: "var(--radius)",
+  border: "1px solid var(--line)",
+  background: "var(--card)",
+};
+
+export const headingStyle: React.CSSProperties = { fontSize: 15, margin: 0 };
+
+export const primaryBtnStyle: React.CSSProperties = {
+  alignSelf: "flex-start",
+  padding: "9px 16px",
+  borderRadius: 999,
+  border: "none",
+  background: "var(--accent)",
+  color: "var(--accent-fg)",
+  fontSize: 13.5,
+  fontWeight: 600,
+};

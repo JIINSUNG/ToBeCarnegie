@@ -8,6 +8,8 @@ import { PersonEdit } from "./screens/PersonEdit";
 import { Briefing } from "./screens/Briefing";
 import { Settings } from "./screens/Settings";
 import { Quotes } from "./screens/Quotes";
+import { Growth } from "./screens/Growth";
+import { Goals } from "./screens/Goals";
 import { TabBar, type TabKey } from "./components/TabBar";
 
 type View =
@@ -17,12 +19,23 @@ type View =
   | { name: "card"; id: string }
   | { name: "edit"; id: string | null }
   | { name: "quotes" }
+  | { name: "growth" }
+  | { name: "goals" }
   | { name: "briefing" }
   | { name: "settings" };
 
 /** card/edit처럼 안으로 들어간 화면이 아니라, 하단 탭에 직접 대응되는 최상위 화면인지. */
 function isTabView(name: View["name"]): name is TabKey {
-  return name === "home" || name === "people" || name === "groups" || name === "quotes" || name === "briefing" || name === "settings";
+  return (
+    name === "home" ||
+    name === "people" ||
+    name === "groups" ||
+    name === "quotes" ||
+    name === "growth" ||
+    name === "goals" ||
+    name === "briefing" ||
+    name === "settings"
+  );
 }
 
 /** 화면 전체(body)가 아니라 이 가운데 영역만 스크롤되게 해서, 탭바와 각 화면 안의 sticky 헤더가
@@ -111,6 +124,10 @@ function Gate() {
         );
       case "quotes":
         return <Quotes onBack={() => setView({ name: "home" })} />;
+      case "growth":
+        return <Growth onBack={() => setView({ name: "home" })} />;
+      case "goals":
+        return <Goals onBack={() => setView({ name: "home" })} />;
       case "briefing":
         return (
           <Briefing

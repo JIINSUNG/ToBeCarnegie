@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { emptyVault, type Vault } from "../types";
 import { addAvoidTopic, addFavor, addFavorGiven, addGift, addIntention, addLike, addNote, createPerson, findPerson, updatePerson } from "./people";
 import { addBook, addBookQuote, findBook, updateBook } from "./books";
+import { addMission, toggleMissionDone } from "./missions";
+import { addJournalEntry } from "./journal";
+import { addAffirmation, toggleAffirmationDone } from "./affirmations";
+import { addGoal, toggleGoalDone } from "./goals";
 import { mergeVaults } from "./merge";
 
 function withPerson(vault: Vault, name: string, id: string): Vault {
@@ -134,5 +138,47 @@ describe("mergeVaults", () => {
     const book = findBook(merged, "b1");
     expect(book?.rating).toBe(5);
     expect(book?.quotes?.sort()).toEqual(["로컬에서 뽑은 글귀", "원격에서 뽑은 글귀"]);
+  });
+
+  it("미션·성장 일기는 양쪽 다 남고, 같은 날짜의 미션 체크는 합쳐진다", () => {
+    let local = addMission(emptyVault(), "로컬 미션", "m1");
+    local = toggleMissionDone(local, "m1", "2026-01-01");
+    local = addJournalEntry(local, "로컬 일기", undefined, "j1");
+
+    let incoming = addMission(emptyVault(), "원격 미션", "m2");
+    incoming = toggleMissionDone(incoming, "m2", "2026-01-01");
+    incoming = addJournalEntry(incoming, "원격 일기", undefined, "j2");
+
+    const merged = mergeVaults(local, incoming);
+    expect(merged.missions?.map((m) => m.id).sort()).toEqual(["m1", "m2"]);
+    expect(merged.journal?.map((e) => e.id).sort()).toEqual(["j1", "j2"]);
+    expect(merged.missionDone?.["2026-01-01"]?.sort()).toEqual(["m1", "m2"]);
+  });
+
+  it("구호는 미션처럼 양쪽 다 남고 같은 날짜 체크는 합쳐진다", () => {
+    let local = addAffirmation(emptyVault(), "로컬 구호", "a1");
+    local = toggleAffirmationDone(local, "a1", "2026-01-01");
+
+    let incoming = addAffirmation(emptyVault(), "원격 구호", "a2");
+    incoming = toggleAffirmationDone(incoming, "a2", "2026-01-01");
+
+    const merged = mergeVaults(local, incoming);
+    expect(merged.affirmations?.map((a) => a.id).sort()).toEqual(["a1", "a2"]);
+    expect(merged.affirmationDone?.["2026-01-01"]?.sort()).toEqual(["a1", "a2"]);
+  });
+
+  it("목표·고치고 싶은 점은 id 기준으로 합치고, 더 최신 쪽(done 등)을 남긴다", () => {
+    let local = addGoal(emptyVault(), "goals", "목표1", "g1");
+    local = addGoal(local, "improvements", "고칠점1", "i1");
+
+    let incoming = addGoal(emptyVault(), "goals", "목표1", "g1");
+    incoming = toggleGoalDone(incoming, "goals", "g1"); // 원격에서 달성 처리
+    // 테스트 환경에서는 local/incoming 생성이 같은 밀리초에 몰릴 수 있어, updatedAt을 확실히 더
+    // 최신으로 만들어 "원격이 더 최신" 상황을 재현한다.
+    incoming = { ...incoming, goals: incoming.goals!.map((g) => ({ ...g, updatedAt: g.updatedAt + 1000 })) };
+
+    const merged = mergeVaults(local, incoming);
+    expect(merged.goals?.find((g) => g.id === "g1")?.done).toBe(true);
+    expect(merged.improvements?.map((g) => g.id)).toEqual(["i1"]);
   });
 });

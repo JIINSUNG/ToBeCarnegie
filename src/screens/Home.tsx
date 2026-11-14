@@ -88,7 +88,7 @@ export function Home({
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 16 }}>
       <div style={{ ...stickyHeaderStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1 style={{ fontSize: 20, margin: 0 }}>관계노트</h1>
+        <h1 style={{ fontSize: 20, margin: 0 }}>더나은</h1>
         <button
           type="button"
           onClick={lock}

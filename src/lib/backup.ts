@@ -4,7 +4,9 @@ import type { StoredVault } from "./storage";
 import { mergeVaults } from "./merge";
 import type { Vault } from "../types";
 
-const BACKUP_APP_ID = "관계노트-백업";
+const BACKUP_APP_ID = "더나은-백업";
+// 앱 이름을 "관계노트"에서 바꾸기 전에 만들어진 백업 파일도 계속 복원할 수 있게, 예전 이름도 받아준다.
+const LEGACY_BACKUP_APP_IDS = ["관계노트-백업"];
 const BACKUP_FORMAT_VERSION = 1;
 
 export interface BackupFile {
@@ -30,8 +32,9 @@ export function parseBackupFile(text: string): BackupFile {
     throw new Error("백업 파일을 읽을 수 없어요.");
   }
   const file = data as Partial<BackupFile> | null;
-  if (!file || file.app !== BACKUP_APP_ID || !file.vault?.cipher) {
-    throw new Error("관계노트 백업 파일이 아니에요.");
+  const validApp = file?.app === BACKUP_APP_ID || LEGACY_BACKUP_APP_IDS.includes(file?.app ?? "");
+  if (!file || !validApp || !file.vault?.cipher) {
+    throw new Error("더나은 백업 파일이 아니에요.");
   }
   return file as BackupFile;
 }

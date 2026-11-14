@@ -49,7 +49,7 @@ export function Lock() {
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: "20vh" }}>
       <div style={{ textAlign: "center" }}>
-        <h1 style={{ fontSize: 22, margin: 0 }}>관계노트</h1>
+        <h1 style={{ fontSize: 22, margin: 0 }}>더나은</h1>
         <p style={{ color: "var(--muted)", fontSize: 14, margin: "6px 0 0" }}>
           {isSetup ? "이 기기에서 처음 쓰시는군요. 잠금 암호를 만들어주세요." : "암호를 입력해 잠금을 풀어주세요."}
         </p>

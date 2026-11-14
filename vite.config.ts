@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: '관계노트',
-        short_name: '관계노트',
-        description: '지인에게 들은 생일·취향·관심사·근황을 빠르게 적어 두고, 다음에 만나기 전에 꺼내 보는 나만 보는 관계 메모 앱',
+        name: '더나은',
+        short_name: '더나은',
+        description: '사람을 챙기고 나를 돌아보며 더 나은 사람이 되는 연습 — 관계 기록 · 오늘의 미션 · 성장 일기',
         lang: 'ko',
         start_url: '/',
         display: 'standalone',

@@ -9,14 +9,14 @@ import {
 } from "../lib/backup";
 import { shouldRemindBackup } from "../lib/derive";
 import { timeAgo } from "../lib/format";
-import { linkStyle, stickyHeaderStyle } from "../lib/layout";
+import { headingStyle, linkStyle, primaryBtnStyle, sectionStyle, stickyHeaderStyle } from "../lib/layout";
 
 function downloadBackupFile(file: BackupFile) {
   const blob = new Blob([serializeBackupFile(file)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `관계노트-백업-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `더나은-백업-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -175,10 +175,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
   );
 }
 
-const sectionStyle: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--card)" };
-const headingStyle: React.CSSProperties = { fontSize: 15, margin: 0 };
 const hintStyle: React.CSSProperties = { color: "var(--muted)", fontSize: 12.5, margin: 0 };
 const fieldStyle: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6, fontSize: 13, color: "var(--fg2)" };
 const inputStyle: React.CSSProperties = { padding: "11px 14px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--field)", color: "var(--fg)", resize: "vertical" };
-const primaryBtnStyle: React.CSSProperties = { alignSelf: "flex-start", padding: "9px 16px", borderRadius: 999, border: "none", background: "var(--accent)", color: "var(--accent-fg)", fontSize: 13.5, fontWeight: 600 };
 const secondaryBtnStyle: React.CSSProperties = { alignSelf: "flex-start", padding: "9px 16px", borderRadius: 999, border: "1px solid var(--line)", background: "var(--field)", color: "var(--fg)", fontSize: 13.5 };

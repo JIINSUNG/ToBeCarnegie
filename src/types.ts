@@ -120,6 +120,32 @@ export interface DailyIntention {
   date: string;
 }
 
+/** 스스로에게 주는 반복 미션 — 한 번 만들면 매일 다시 나타나고, 그날그날 체크한다. */
+export interface Mission {
+  id: string;
+  text: string;
+  createdAt: number;
+}
+
+/** 성장 일기 한 줄 — 프롬프트에 답했거나 자유롭게 쓴 기록. */
+export interface JournalEntry {
+  id: string;
+  text: string;
+  /** 어떤 질문에 답한 건지(선택) — 자유롭게 썼으면 없음. */
+  prompt?: string;
+  at: number;
+}
+
+/** 목표 하나 — 미션과 달리 매일 반복이 아니라 "한 번 달성하면 끝"인 것. */
+export interface Goal {
+  id: string;
+  text: string;
+  done: boolean;
+  achievedAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
 /** 잠금 해제하면 메모리에만 떠 있는 평문 데이터 전체. */
 export interface Vault {
   version: number;
@@ -132,6 +158,19 @@ export interface Vault {
   /** 아직 아무도 안 속한 그룹도 미리 만들어둘 수 있게 하는 등록부. 실제로 쓰이는 그룹은
    * allGroups()가 이거랑 사람들의 person.groups를 합쳐서 보여준다. */
   groupNames?: string[];
+  /** 등록해둔 반복 미션들. */
+  missions?: Mission[];
+  /** 날짜별로 그날 완료한 미션 id 목록. */
+  missionDone?: Record<string, string[]>;
+  /** 성장 일기. */
+  journal?: JournalEntry[];
+  /** 매일 아침 외치는 구호들 — 구조는 미션과 같다(문구 + 그날 외쳤는지). */
+  affirmations?: Mission[];
+  affirmationDone?: Record<string, string[]>;
+  /** 이루고 싶은 목표들 — 한 번 달성하면 끝나는 것들(미션처럼 매일 반복 아님). */
+  goals?: Goal[];
+  /** 스스로 고치고 싶은 점 — goals와 같은 구조, 의미만 "그만하고 싶은 것". */
+  improvements?: Goal[];
 }
 
 export function emptyVault(): Vault {

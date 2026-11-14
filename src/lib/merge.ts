@@ -2,7 +2,7 @@
 // 백업 복원(합치기)과 2단계 Firebase 동기화가 공용으로 쓴다.
 // id가 있는 항목(notes/gifts/anniversaries)은 id 기준으로, id가 없는 단순 목록(likes 등)은
 // 합집합으로 합친다 — 두 기기에서 각자 추가한 내용이 한쪽만 "더 최신"이라고 통째로 사라지지 않게.
-import type { Anniversary, Book, CustomWisdom, DailyIntention, Gift, Intention, Note, Person, Vault } from "../types";
+import type { Anniversary, Book, CustomWisdom, DailyIntention, Gift, Goal, Intention, JournalEntry, Mission, Note, Person, Vault } from "../types";
 
 function mergeById<T extends { id: string; updatedAt: number }>(a: T[], b: T[]): T[] {
   const byId = new Map<string, T>();
@@ -91,6 +91,14 @@ function mergeBooks(a: Book[] = [], b: Book[] = []): Book[] {
   return [...byId.values()];
 }
 
+/** 날짜별 완료 기록(미션·구호 체크) — 같은 날짜에 양쪽 기기가 각자 체크한 id를 합집합으로 합친다. */
+function mergeDatedIdSet(a: Record<string, string[]> = {}, b: Record<string, string[]> = {}): Record<string, string[]> {
+  const dates = new Set([...Object.keys(a), ...Object.keys(b)]);
+  const result: Record<string, string[]> = {};
+  for (const d of dates) result[d] = mergeStringList(a[d], b[d]);
+  return result;
+}
+
 export function mergeVaults(local: Vault, incoming: Vault): Vault {
   const byId = new Map<string, Person>();
   for (const person of local.people) byId.set(person.id, person);
@@ -104,6 +112,13 @@ export function mergeVaults(local: Vault, incoming: Vault): Vault {
   const groupNames = mergeStringList(local.groupNames, incoming.groupNames);
   const dailyIntention = mergeDailyIntention(local.dailyIntention, incoming.dailyIntention);
   const books = mergeBooks(local.books, incoming.books);
+  const missions = mergeByIdUnion<Mission>(local.missions ?? [], incoming.missions ?? []);
+  const missionDone = mergeDatedIdSet(local.missionDone, incoming.missionDone);
+  const journal = mergeByIdUnion<JournalEntry>(local.journal ?? [], incoming.journal ?? []);
+  const affirmations = mergeByIdUnion<Mission>(local.affirmations ?? [], incoming.affirmations ?? []);
+  const affirmationDone = mergeDatedIdSet(local.affirmationDone, incoming.affirmationDone);
+  const goals = mergeById<Goal>(local.goals ?? [], incoming.goals ?? []);
+  const improvements = mergeById<Goal>(local.improvements ?? [], incoming.improvements ?? []);
 
   return {
     version: Math.max(local.version, incoming.version),
@@ -113,5 +128,12 @@ export function mergeVaults(local: Vault, incoming: Vault): Vault {
     ...(groupNames.length ? { groupNames } : {}),
     ...(dailyIntention ? { dailyIntention } : {}),
     ...(books.length ? { books } : {}),
+    ...(missions.length ? { missions } : {}),
+    ...(Object.keys(missionDone).length ? { missionDone } : {}),
+    ...(journal.length ? { journal } : {}),
+    ...(affirmations.length ? { affirmations } : {}),
+    ...(Object.keys(affirmationDone).length ? { affirmationDone } : {}),
+    ...(goals.length ? { goals } : {}),
+    ...(improvements.length ? { improvements } : {}),
   };
 }
