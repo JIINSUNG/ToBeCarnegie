@@ -31,11 +31,12 @@ export function TabBar({ tab, onChange }: { tab: TabKey; onChange: (tab: TabKey)
           maxWidth: 480,
           margin: "0 auto",
           display: "grid",
-          gridTemplateColumns: `repeat(${TABS.length}, 1fr)`,
+          // minmax(0, 1fr) — 칸이 글자 폭보다 좁아질 수 있어야 폭이 좁은 화면(폴더블 커버 화면 등)에서 끝 탭이 잘리지 않는다.
+          gridTemplateColumns: `repeat(${TABS.length}, minmax(0, 1fr))`,
           height: TAB_BAR_HEIGHT,
           // 탭바 배경은 화면 끝까지 닿아야 하지만(전체 너비), 양 끝 탭의 아이콘까지 화면 모서리에
           // 바짝 붙으면 답답하고 잘린 것처럼 보여서, 아이콘 줄에만 안쪽 여백을 조금 둔다.
-          paddingInline: 8,
+          paddingInline: "clamp(2px, 1.5vw, 8px)",
         }}
       >
         {TABS.map(([key, icon, label]) => (
@@ -52,13 +53,15 @@ export function TabBar({ tab, onChange }: { tab: TabKey; onChange: (tab: TabKey)
               gap: 2,
               background: "none",
               border: "none",
-              fontSize: 11,
+              minWidth: 0,
+              padding: 0,
+              fontSize: "clamp(9.5px, 2.7vw, 11px)",
               fontWeight: tab === key ? 700 : 500,
               color: tab === key ? "var(--accent)" : "var(--muted)",
             }}
           >
-            <span style={{ fontSize: 19, lineHeight: 1 }}>{icon}</span>
-            <span style={{ whiteSpace: "nowrap" }}>{label}</span>
+            <span style={{ fontSize: "clamp(16px, 4.6vw, 19px)", lineHeight: 1 }}>{icon}</span>
+            <span style={{ whiteSpace: "nowrap", maxWidth: "100%", overflow: "hidden", textOverflow: "clip" }}>{label}</span>
           </button>
         ))}
       </div>

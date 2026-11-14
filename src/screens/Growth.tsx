@@ -157,12 +157,13 @@ export function Growth({ onBack }: { onBack: () => void }) {
             style={inputStyle}
             aria-label="새 미션"
           />
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <TargetFields target={targetDraft} unit={unitDraft} onTarget={setTargetDraft} onUnit={setUnitDraft} />
-            <button type="button" onClick={addDraftMission} disabled={!missionDraft.trim()} style={{ ...primaryBtnStyle, alignSelf: "center" }}>
+            <button type="button" onClick={addDraftMission} disabled={!missionDraft.trim()} style={{ ...primaryBtnStyle, alignSelf: "center", marginLeft: "auto" }}>
               추가
             </button>
           </div>
+          <span style={{ fontSize: 11.5, color: "var(--muted)" }}>횟수를 비워두면 체크만 하는 미션이 돼요.</span>
         </div>
         {missionError && <p style={{ color: "var(--warn)", fontSize: 12.5, margin: 0 }}>{missionError}</p>}
       </section>
@@ -309,7 +310,7 @@ function RecurringItemRow({ item, done, streak, onToggle, onRemove }: { item: Mi
 /** 하루 목표 횟수 + 단위 입력칸 — 비워두면 체크 미션. 새 미션 추가와 수정 화면이 같이 쓴다. */
 function TargetFields({ target, unit, onTarget, onUnit }: { target: string; unit: string; onTarget: (v: string) => void; onUnit: (v: string) => void }) {
   return (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, minWidth: 0, fontSize: 13, color: "var(--fg2)" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--fg2)", flexShrink: 0 }}>
       <span style={{ whiteSpace: "nowrap" }}>하루</span>
       <input
         inputMode="numeric"
@@ -317,7 +318,7 @@ function TargetFields({ target, unit, onTarget, onUnit }: { target: string; unit
         onChange={(e) => onTarget(e.target.value.replace(/\D/g, "").slice(0, String(MAX_MISSION_TARGET).length))}
         placeholder="횟수"
         aria-label="하루 목표 횟수 (선택)"
-        style={{ ...inputStyle, flex: "0 0 64px", width: 64, textAlign: "center", padding: "10px 6px" }}
+        style={{ ...inputStyle, flex: "0 0 auto", width: 64, textAlign: "center", padding: "10px 4px" }}
       />
       <input
         value={unit}
@@ -325,9 +326,8 @@ function TargetFields({ target, unit, onTarget, onUnit }: { target: string; unit
         placeholder="단위"
         aria-label="단위 (선택, 예: 명, 잔)"
         disabled={!target}
-        style={{ ...inputStyle, flex: "0 0 64px", width: 64, textAlign: "center", padding: "10px 6px", opacity: target ? 1 : 0.5 }}
+        style={{ ...inputStyle, flex: "0 0 auto", width: 64, textAlign: "center", padding: "10px 4px", opacity: target ? 1 : 0.5 }}
       />
-      <span style={{ fontSize: 11.5, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{target ? "" : "(비우면 체크만)"}</span>
     </div>
   );
 }
@@ -366,19 +366,22 @@ function MissionRow({
         {streak >= 2 && <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--accent)", whiteSpace: "nowrap" }}>🔥 {streak}일째</span>}
       </div>
       {target && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, paddingLeft: 38 }}>
-          <div style={{ flex: 1, height: 6, borderRadius: 3, background: "var(--line)", overflow: "hidden" }} aria-hidden>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, paddingLeft: 38, flexWrap: "wrap", rowGap: 8 }}>
+          {/* 막대는 버튼과 같은 줄에 두되, 폭이 모자라면(좁은 화면·큰 글씨) 혼자 한 줄을 차지하게 감싼다. */}
+          <div style={{ flex: "1 1 110px", height: 6, borderRadius: 3, background: "var(--line)", overflow: "hidden" }} aria-hidden>
             <div style={{ width: `${Math.min(100, (count / target) * 100)}%`, height: "100%", background: done ? "var(--ok)" : "var(--accent)", borderRadius: 3, transition: "width 0.15s" }} />
           </div>
-          <button type="button" onClick={() => onStep(-1)} disabled={count === 0} aria-label={`${mission.text} 하나 빼기`} style={{ ...stepBtnStyle, opacity: count === 0 ? 0.4 : 1 }}>
-            −
-          </button>
-          <span aria-live="polite" style={{ minWidth: 58, textAlign: "center", fontSize: 13.5, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: done ? "var(--ok)" : "var(--fg)" }}>
-            {formatMissionProgress(mission, count)}
-          </span>
-          <button type="button" onClick={() => onStep(1)} aria-label={`${mission.text} 하나 더하기`} style={{ ...stepBtnStyle, background: "var(--accent)", color: "var(--accent-fg)", borderColor: "var(--accent)" }}>
-            +
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: "auto", flexShrink: 0 }}>
+            <button type="button" onClick={() => onStep(-1)} disabled={count === 0} aria-label={`${mission.text} 하나 빼기`} style={{ ...stepBtnStyle, opacity: count === 0 ? 0.4 : 1 }}>
+              −
+            </button>
+            <span aria-live="polite" style={{ minWidth: 58, textAlign: "center", fontSize: 13.5, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: done ? "var(--ok)" : "var(--fg)" }}>
+              {formatMissionProgress(mission, count)}
+            </span>
+            <button type="button" onClick={() => onStep(1)} aria-label={`${mission.text} 하나 더하기`} style={{ ...stepBtnStyle, background: "var(--accent)", color: "var(--accent-fg)", borderColor: "var(--accent)" }}>
+              +
+            </button>
+          </div>
         </div>
       )}
     </div>
