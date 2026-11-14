@@ -8,7 +8,7 @@ const TABS: [TabKey, string, string][] = [
   ["goals", "🏆", "목표"],
   ["people", "👤", "사람"],
   ["groups", "👥", "그룹"],
-  ["quotes", "📚", "읽은 것"],
+  ["quotes", "📚", "독서"],
   ["briefing", "📋", "브리핑"],
   ["settings", "⚙️", "설정"],
 ];
@@ -58,7 +58,7 @@ export function TabBar({ tab, onChange }: { tab: TabKey; onChange: (tab: TabKey)
             }}
           >
             <span style={{ fontSize: 19, lineHeight: 1 }}>{icon}</span>
-            <span>{label}</span>
+            <span style={{ whiteSpace: "nowrap" }}>{label}</span>
           </button>
         ))}
       </div>

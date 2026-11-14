@@ -6,6 +6,7 @@ import { parseQuickEntry } from "../lib/parser";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
 import { pickRandomWisdom } from "../lib/wisdom";
 import { suggestContact, todayDateStr, upcomingAnniversaries, upcomingBirthdays } from "../lib/derive";
+import { isMissionDone } from "../lib/missions";
 import { stickyHeaderStyle } from "../lib/layout";
 
 const SOON_WINDOW_DAYS = 7;
@@ -15,11 +16,13 @@ export function Home({
   onBriefing,
   onSettings,
   onOpenPerson,
+  onGrowth,
 }: {
   onPeople: () => void;
   onBriefing: () => void;
   onSettings: () => void;
   onOpenPerson: (id: string) => void;
+  onGrowth: () => void;
 }) {
   const { vault, lock, update } = useSession();
   const [quick, setQuick] = useState("");
@@ -45,6 +48,9 @@ export function Home({
     update((v) => setDailyIntention(v, text, todayStr));
     setEditingIntention(false);
   };
+
+  const missions = vault?.missions ?? [];
+  const missionDoneCount = vault ? missions.filter((m) => isMissionDone(vault, m.id, todayStr)).length : 0;
 
   const suggestion = vault ? suggestContact(vault) : null;
   const soonBirthdays = vault ? upcomingBirthdays(vault, undefined, SOON_WINDOW_DAYS) : [];
@@ -163,6 +169,15 @@ export function Home({
         </button>
       </div>
 
+      {missions.length > 0 && (
+        <button type="button" onClick={onGrowth} style={missionTeaserStyle}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>🎯 오늘의 미션</span>
+          <span style={{ color: "var(--muted)", fontSize: 13 }}>
+            {missionDoneCount} / {missions.length} →
+          </span>
+        </button>
+      )}
+
       {suggestion && (
         <div style={suggestBoxStyle}>
           <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--fg2)" }}>📞 오늘은 이분께 연락해볼까요</span>
@@ -270,6 +285,18 @@ const wisdomBoxStyle: React.CSSProperties = {
   padding: 16,
   borderRadius: 16,
   background: "var(--accent)",
+};
+
+const missionTeaserStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "12px 14px",
+  borderRadius: 16,
+  border: "1px solid var(--line)",
+  background: "var(--card)",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+  textAlign: "left",
 };
 
 const suggestBoxStyle: React.CSSProperties = {

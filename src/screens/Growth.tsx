@@ -256,7 +256,7 @@ function RecurringItemRow({ item, done, streak, onToggle, onRemove }: { item: Mi
       {streak >= 2 && (
         <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--accent)", whiteSpace: "nowrap" }}>🔥 {streak}일째</span>
       )}
-      <button type="button" onClick={onRemove} aria-label={`${item.text} 삭제`} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 11.5, flexShrink: 0 }}>
+      <button type="button" onClick={onRemove} aria-label={`${item.text} 삭제`} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 11.5, flexShrink: 0, whiteSpace: "nowrap" }}>
         삭제
       </button>
     </div>
@@ -270,7 +270,7 @@ function JournalRow({ entry, onRemove }: { entry: JournalEntry; onRemove: () => 
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{entry.text}</p>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ color: "var(--muted)", fontSize: 11.5 }}>{formatDate(entry.at)}</span>
-        <button type="button" onClick={onRemove} style={{ background: "none", border: "none", color: "var(--warn)", fontSize: 11.5, padding: 0 }}>
+        <button type="button" onClick={onRemove} style={{ background: "none", border: "none", color: "var(--warn)", fontSize: 11.5, padding: 0, flexShrink: 0, whiteSpace: "nowrap" }}>
           삭제
         </button>
       </div>

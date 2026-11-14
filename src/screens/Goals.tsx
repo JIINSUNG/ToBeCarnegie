@@ -105,7 +105,7 @@ function GoalRow({ goal, onToggle, onRemove }: { goal: Goal; onToggle: () => voi
         <span style={{ fontSize: 14, textDecoration: goal.done ? "line-through" : "none", color: goal.done ? "var(--muted)" : "var(--fg)" }}>{goal.text}</span>
         {goal.done && goal.achievedAt && <span style={{ fontSize: 11, color: "var(--muted)" }}>{formatDate(goal.achievedAt)} 달성</span>}
       </div>
-      <button type="button" onClick={onRemove} aria-label={`${goal.text} 삭제`} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 11.5, flexShrink: 0 }}>
+      <button type="button" onClick={onRemove} aria-label={`${goal.text} 삭제`} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 11.5, flexShrink: 0, whiteSpace: "nowrap" }}>
         삭제
       </button>
     </div>

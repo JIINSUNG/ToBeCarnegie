@@ -21,15 +21,8 @@ function BookCard({ book, onUpdate, onDelete, onAddQuote, onRemoveQuote }: {
 
   return (
     <div style={cardStyle}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-        <div>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{book.title}</p>
-          {book.author && <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted)" }}>{book.author}</p>}
-        </div>
-        <button type="button" onClick={onDelete} style={{ background: "none", border: "none", color: "var(--warn)", fontSize: 12.5, padding: 0, flexShrink: 0 }}>
-          삭제
-        </button>
-      </div>
+      <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{book.title}</p>
+      {book.author && <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted)" }}>{book.author}</p>}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 2 }}>
@@ -55,6 +48,9 @@ function BookCard({ book, onUpdate, onDelete, onAddQuote, onRemoveQuote }: {
             style={{ padding: "4px 6px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--field)", fontSize: 13, color: "var(--fg)" }}
           />
         </label>
+        <button type="button" onClick={onDelete} style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--warn)", fontSize: 12.5, padding: 0, flexShrink: 0 }}>
+          삭제
+        </button>
       </div>
 
       <label style={fieldStyle}>
@@ -220,12 +216,16 @@ export function Quotes({ onBack }: { onBack: () => void }) {
                 .map((q) => (
                   <div key={q.id} style={cardStyle}>
                     <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5 }}>{q.text}</p>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ color: "var(--muted)", fontSize: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "var(--muted)", fontSize: 12, flex: 1, minWidth: 0 }}>
                         {q.source ? `— ${q.source} · ` : ""}
                         {formatDate(q.createdAt)}
                       </span>
-                      <button type="button" onClick={() => handleRemove(q.id)} style={{ background: "none", border: "none", color: "var(--warn)", fontSize: 12.5, padding: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(q.id)}
+                        style={{ background: "none", border: "none", color: "var(--warn)", fontSize: 12.5, padding: 0, flexShrink: 0, whiteSpace: "nowrap" }}
+                      >
                         삭제
                       </button>
                     </div>

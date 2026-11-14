@@ -38,4 +38,6 @@ export const primaryBtnStyle: React.CSSProperties = {
   color: "var(--accent-fg)",
   fontSize: 13.5,
   fontWeight: 600,
+  flexShrink: 0,
+  whiteSpace: "nowrap",
 };

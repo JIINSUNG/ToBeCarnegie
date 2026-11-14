@@ -208,11 +208,11 @@ export function People({
                     </>
                   ) : (
                     <>
-                      <span style={{ flex: 1, fontSize: 13.5 }}>👥 {g}</span>
-                      <button type="button" onClick={() => startRename(g)} style={{ ...linkStyle, padding: 0, fontSize: 12.5 }}>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, overflowWrap: "break-word" }}>👥 {g}</span>
+                      <button type="button" onClick={() => startRename(g)} style={{ ...linkStyle, padding: 0, fontSize: 12.5, flexShrink: 0, whiteSpace: "nowrap" }}>
                         이름 바꾸기
                       </button>
-                      <button type="button" onClick={() => handleDeleteGroup(g)} style={{ ...linkStyle, color: "var(--warn)", padding: 0, fontSize: 12.5 }}>
+                      <button type="button" onClick={() => handleDeleteGroup(g)} style={{ ...linkStyle, color: "var(--warn)", padding: 0, fontSize: 12.5, flexShrink: 0, whiteSpace: "nowrap" }}>
                         삭제
                       </button>
                     </>

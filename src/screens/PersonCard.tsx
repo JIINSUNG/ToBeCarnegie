@@ -109,7 +109,7 @@ function AnniversarySection({
       ) : (
         anniversaries.map((a) => (
           <div key={a.id} style={rowStyle}>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 14 }}>
                 {a.label}
                 {a.lunar && <span style={{ color: "var(--muted)", fontWeight: 400 }}> (음력)</span>}
@@ -169,7 +169,7 @@ function IntentionSection({ person, onAdd, onDelete }: { person: Person; onAdd: 
       ) : (
         intentions.map((i) => (
           <div key={i.id} style={rowStyle}>
-            <p style={{ margin: 0, fontSize: 14 }}>{i.text}</p>
+            <p style={{ margin: 0, fontSize: 14, flex: 1, minWidth: 0 }}>{i.text}</p>
             <button type="button" onClick={() => onDelete(i.id)} style={deleteLinkStyle}>
               삭제
             </button>
@@ -355,8 +355,8 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
             .sort((a, b) => b.at - a.at)
             .map((n) => (
               <div key={n.id} style={rowStyle}>
-                <p style={{ margin: 0, fontSize: 14 }}>{n.text}</p>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <p style={{ margin: 0, fontSize: 14, flex: 1, minWidth: 0 }}>{n.text}</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                   <span style={{ color: "var(--muted)", fontSize: 11.5 }}>{formatDate(n.at)}</span>
                   <button type="button" onClick={() => update((v) => deleteNote(v, id, n.id))} style={deleteLinkStyle}>
                     삭제
@@ -438,8 +438,8 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
           onKeyDown={(e) => e.key === "Enter" && addDraftGift()}
           style={inputStyle}
         />
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 4 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
             {(["received", "given"] as const).map((d) => (
               <button
                 key={d}
@@ -453,6 +453,8 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
                   border: "1px solid var(--line)",
                   background: giftDirection === d ? "var(--accent)" : "var(--field)",
                   color: giftDirection === d ? "var(--accent-fg)" : "var(--fg2)",
+                  flexShrink: 0,
+                  whiteSpace: "nowrap",
                 }}
               >
                 {d === "received" ? "받음" : "줌"}
@@ -465,7 +467,7 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
             placeholder="금액(선택, 원)"
             value={giftAmount}
             onChange={(e) => setGiftAmount(e.target.value)}
-            style={{ ...inputStyle, flex: 1, padding: "8px 10px" }}
+            style={{ ...inputStyle, flex: 1, minWidth: 90, padding: "8px 10px" }}
           />
           <button type="button" onClick={addDraftGift} disabled={!giftDraft.trim()} style={smallAddBtnStyle}>
             추가
@@ -552,7 +554,7 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
   );
 }
 
-const deleteLinkStyle: React.CSSProperties = { background: "none", border: "none", color: "var(--muted)", fontSize: 11.5, flexShrink: 0 };
+const deleteLinkStyle: React.CSSProperties = { background: "none", border: "none", color: "var(--muted)", fontSize: 11.5, flexShrink: 0, whiteSpace: "nowrap" };
 const sectionStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
@@ -566,5 +568,15 @@ const sectionStyle: React.CSSProperties = {
 const headingStyle: React.CSSProperties = { fontSize: 14, margin: 0, color: "var(--fg2)" };
 // 16px 미만이면 iOS Safari가 포커스 시 자동으로 확대해버려서(그리고 잘 안 풀림) 16으로 고정.
 const inputStyle: React.CSSProperties = { padding: "10px 12px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--field)", color: "var(--fg)", fontSize: 16 };
-const smallAddBtnStyle: React.CSSProperties = { padding: "0 14px", borderRadius: "var(--radius)", border: "none", background: "var(--accent)", color: "var(--accent-fg)", fontSize: 13.5, fontWeight: 600 };
+const smallAddBtnStyle: React.CSSProperties = {
+  padding: "0 14px",
+  borderRadius: "var(--radius)",
+  border: "none",
+  background: "var(--accent)",
+  color: "var(--accent-fg)",
+  fontSize: 13.5,
+  fontWeight: 600,
+  flexShrink: 0,
+  whiteSpace: "nowrap",
+};
 const rowStyle: React.CSSProperties = { padding: "10px 12px", borderRadius: "var(--radius)", background: "var(--field)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 };
