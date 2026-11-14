@@ -3,6 +3,8 @@ import { useSession } from "../session";
 import { ChipListField } from "../components/ChipListField";
 import { ContactSection, FollowUpSection } from "../components/ContactSection";
 import { Stories } from "../components/Stories";
+import { MeetBrief } from "../components/MeetBrief";
+import { PersonAppreciations } from "../components/Appreciations";
 import {
   addAnniversary,
   addAvoidTopic,
@@ -189,6 +191,7 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
   const [giftAmount, setGiftAmount] = useState("");
   const [giftError, setGiftError] = useState<string | null>(null);
   const person = vault ? findPerson(vault, id) : undefined;
+  const [briefing, setBriefing] = useState(false);
 
   if (!person) {
     return (
@@ -235,6 +238,8 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
     onBack();
   };
 
+  if (briefing) return <MeetBrief personId={id} onClose={() => setBriefing(false)} onEdit={() => onEdit(id)} />;
+
   const temp = relationshipTemp(person);
   const wisdom = pickWisdomForPerson(person);
 
@@ -244,9 +249,18 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
         <button type="button" onClick={onBack} style={linkStyle}>
           ← 목록
         </button>
-        <button type="button" onClick={() => onEdit(id)} style={{ ...linkStyle, color: "var(--accent)" }}>
-          수정
-        </button>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <button
+            type="button"
+            onClick={() => setBriefing(true)}
+            style={{ padding: "6px 12px", borderRadius: 999, border: "1px solid var(--line)", background: "var(--card)", color: "var(--fg)", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}
+          >
+            ☕ 만나기 전
+          </button>
+          <button type="button" onClick={() => onEdit(id)} style={{ ...linkStyle, color: "var(--accent)" }}>
+            수정
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -302,6 +316,7 @@ export function PersonCard({ id, onBack, onEdit }: { id: string; onBack: () => v
 
       <FollowUpSection person={person} />
       <ContactSection person={person} />
+      <PersonAppreciations personId={person.id} />
       <Stories personId={person.id} compact />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: 14, borderRadius: 16, background: "var(--accent)" }}>

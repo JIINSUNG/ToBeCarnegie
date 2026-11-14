@@ -1,11 +1,13 @@
 import { useSession } from "../session";
 import { ACTIVITY_KIND_LABEL, buildBriefing } from "../lib/derive";
+import { quietAppreciation } from "../lib/appreciations";
 import { timeAgo } from "../lib/format";
 import { headingStyle, linkStyle, sectionStyle, stickyHeaderStyle } from "../lib/layout";
 
 export function Briefing({ onOpenPerson, onSettings, onBack }: { onOpenPerson: (id: string) => void; onSettings: () => void; onBack: () => void }) {
   const { vault } = useSession();
   const briefing = vault ? buildBriefing(vault) : null;
+  const quiet = vault ? quietAppreciation(vault) : [];
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: 20, paddingTop: 16 }}>
@@ -22,6 +24,7 @@ export function Briefing({ onOpenPerson, onSettings, onBack }: { onOpenPerson: (
         briefing.upcomingAnniversaries.length === 0 &&
         briefing.staleContacts.length === 0 &&
         briefing.recentActivity.length === 0 &&
+        quiet.length === 0 &&
         !briefing.shouldBackup) ? (
         <p style={{ color: "var(--muted)", fontSize: 14, textAlign: "center", marginTop: 40 }}>지금은 딱히 알려드릴 게 없어요.</p>
       ) : (
@@ -69,6 +72,19 @@ export function Briefing({ onOpenPerson, onSettings, onBack }: { onOpenPerson: (
                 <button key={person.id} type="button" onClick={() => onOpenPerson(person.id)} style={rowStyle}>
                   <span>{person.name}</span>
                   <span style={{ color: "var(--muted)", fontSize: 12.5 }}>{daysSinceContact}일째</span>
+                </button>
+              ))}
+            </section>
+          )}
+
+          {quiet.length > 0 && (
+            <section style={sectionStyle}>
+              <h2 style={headingStyle}>💛 고마움을 표현한 지 오래된 사람</h2>
+              <p style={{ margin: 0, fontSize: 12.5, color: "var(--muted)" }}>요즘도 자주 연락하는데, 고맙다·잘했다는 말을 남긴 지 오래됐어요.</p>
+              {quiet.map(({ person, daysSince }) => (
+                <button key={person.id} type="button" onClick={() => onOpenPerson(person.id)} style={rowStyle}>
+                  <span>{person.name}</span>
+                  <span style={{ color: "var(--muted)", fontSize: 12.5 }}>{daysSince === null ? "아직 기록 없음" : `${daysSince}일째`}</span>
                 </button>
               ))}
             </section>

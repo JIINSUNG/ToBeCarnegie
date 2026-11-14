@@ -32,6 +32,9 @@ src/
   lib/parser.ts       한 줄 기록 파서
   lib/derive.ts       다가오는 생일, 관계 온도, 연락 뜸한 사람, 오늘의 추천 연락, 최근 활동, 브리핑, 백업 알림
   lib/contacts.ts     연락 기록(언제·어떻게, lastContactAt 자동 맞춤) + 다음에 물어볼 것 체크리스트
+  lib/principles.ts   카네기 원칙 30개(자체 요약 문구+실천 요령) + 주간 원칙 고르기·추천·실천 기록
+  lib/appreciations.ts 감사·칭찬 기록 + "연락은 하는데 고마움 표현이 오래된 사람"
+  lib/meet-brief.ts   만나기 전 30초 브리핑(기존 기록을 모아 정렬만 하는 순수 함수)
   lib/books.ts        읽은 책(독후감·글귀) CRUD
   lib/missions.ts     오늘의 미션(매일 반복) — 체크 미션 + 횟수 미션(target·unit, +/− 카운트) CRUD + 연속일수
   lib/affirmations.ts 오늘의 구호(매일 반복 체크) — missions.ts와 같은 구조
@@ -47,7 +50,8 @@ src/
                         Quotes(글귀+독후감), Growth(미션+구호+일기), Goals(목표+고칠점)
   components/           TabBar, ChipListField(좋아요/싫어요/책 글귀 등 공용 칩 입력),
                         ContactSection(연락 기록·물어볼 것), MissionCalendar(5주 미션 달성 달력),
-                        PeriodGoals(기간 목표·시도·돌아보기), Stories(영향·영감 노트 — 사람 카드에도)
+                        PeriodGoals(기간 목표·시도·돌아보기), Stories(영향·영감 노트 — 사람 카드에도),
+                        PrincipleChallenge(성장 탭), Appreciations(홈 빠른 입력·사람 카드), MeetBrief(사람 카드 ☕)
 ```
 
 ## 동기화 병합 규칙

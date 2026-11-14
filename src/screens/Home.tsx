@@ -8,6 +8,7 @@ import { pickRandomWisdom } from "../lib/wisdom";
 import { suggestContact, todayDateStr, upcomingAnniversaries, upcomingBirthdays } from "../lib/derive";
 import { isMissionDone } from "../lib/missions";
 import { openFollowUps } from "../lib/contacts";
+import { QuickAppreciation } from "../components/Appreciations";
 import { stickyHeaderStyle } from "../lib/layout";
 
 const SOON_WINDOW_DAYS = 7;
@@ -213,6 +214,8 @@ export function Home({
       ) : (
         <p style={{ color: "var(--muted)", fontSize: 14 }}>{vault?.people.length}명 기록됨</p>
       )}
+
+      <QuickAppreciation />
 
       <div style={quickBoxStyle}>
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--fg2)" }}>한 줄 빠른 기록</span>

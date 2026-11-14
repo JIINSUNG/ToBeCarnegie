@@ -5,6 +5,7 @@ import { addAffirmation, affirmationStreak, isAffirmationDone, removeAffirmation
 import { addJournalEntry, JOURNAL_PROMPTS, pickJournalPrompt, removeJournalEntry } from "../lib/journal";
 import { todayDateStr } from "../lib/derive";
 import { MissionCalendar } from "../components/MissionCalendar";
+import { PrincipleChallenge } from "../components/PrincipleChallenge";
 import { checkSensitive, BLOCK_REASON_LABEL } from "../lib/filter";
 import { formatDate } from "../lib/format";
 import { headingStyle, linkStyle, primaryBtnStyle, sectionStyle, stickyHeaderStyle } from "../lib/layout";
@@ -88,6 +89,8 @@ export function Growth({ onBack }: { onBack: () => void }) {
         <h1 style={{ fontSize: 18, margin: 0 }}>성장</h1>
         <span style={{ width: 40 }} />
       </div>
+
+      <PrincipleChallenge />
 
       <section style={sectionStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
