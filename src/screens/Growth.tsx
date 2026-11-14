@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSession } from "../session";
-import { addMission, isMissionDone, missionStreak, removeMission, toggleMissionDone } from "../lib/missions";
+import { addMission, formatMissionProgress, isMissionDone, MAX_MISSION_TARGET, missionCount, missionStreak, removeMission, stepMissionCount, toggleMissionDone, updateMission } from "../lib/missions";
 import { addAffirmation, affirmationStreak, isAffirmationDone, removeAffirmation, toggleAffirmationDone } from "../lib/affirmations";
 import { addJournalEntry, JOURNAL_PROMPTS, pickJournalPrompt, removeJournalEntry } from "../lib/journal";
 import { todayDateStr } from "../lib/derive";
@@ -16,19 +16,25 @@ export function Growth({ onBack }: { onBack: () => void }) {
   const journal = vault?.journal ?? [];
 
   const [missionDraft, setMissionDraft] = useState("");
+  const [targetDraft, setTargetDraft] = useState("");
+  const [unitDraft, setUnitDraft] = useState("");
   const [missionError, setMissionError] = useState<string | null>(null);
+  const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
 
   const addDraftMission = () => {
     const text = missionDraft.trim();
     if (!text) return;
-    const reason = checkSensitive(text);
+    const reason = checkSensitive(text) ?? checkSensitive(unitDraft);
     if (reason) {
       setMissionError(BLOCK_REASON_LABEL[reason]);
       return;
     }
     setMissionError(null);
-    update((v) => addMission(v, text));
+    const target = targetDraft ? Number(targetDraft) : undefined;
+    update((v) => addMission(v, text, undefined, { target, unit: unitDraft }));
     setMissionDraft("");
+    setTargetDraft("");
+    setUnitDraft("");
   };
 
   const doneCount = vault ? missions.filter((m) => isMissionDone(vault, m.id, date)).length : 0;
@@ -89,39 +95,73 @@ export function Growth({ onBack }: { onBack: () => void }) {
             {doneCount} / {missions.length}
           </span>
         </div>
-        <p style={{ color: "var(--muted)", fontSize: 12.5, margin: 0 }}>한 번 등록하면 매일 다시 나타나요. 꾸준히 체크해서 습관을 만들어보세요.</p>
+        <p style={{ color: "var(--muted)", fontSize: 12.5, margin: 0 }}>
+          한 번 등록하면 매일 다시 나타나요. "고객 5명에게 연락", "물 5잔"처럼 횟수를 정하면 + / − 로 세고, 횟수 없이 두면 체크만 하면 돼요.
+        </p>
+
+        {missions.length > 0 && (
+          <div style={{ height: 6, borderRadius: 3, background: "var(--field)", overflow: "hidden" }} aria-hidden>
+            <div style={{ width: `${(doneCount / missions.length) * 100}%`, height: "100%", background: "var(--ok)", borderRadius: 3, transition: "width 0.2s" }} />
+          </div>
+        )}
 
         {missions.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 13.5, margin: 0 }}>아직 등록한 미션이 없어요.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {missions.map((m) => (
-              <RecurringItemRow
-                key={m.id}
-                item={m}
-                done={vault ? isMissionDone(vault, m.id, date) : false}
-                streak={vault ? missionStreak(vault, m.id, date) : 0}
-                onToggle={() => update((v) => toggleMissionDone(v, m.id, date))}
-                onRemove={() => update((v) => removeMission(v, m.id))}
-              />
-            ))}
+            {missions.map((m) =>
+              editingMissionId === m.id ? (
+                <MissionEditor
+                  key={m.id}
+                  mission={m}
+                  onSave={(text, target, unit) => {
+                    const reason = checkSensitive(text) ?? checkSensitive(unit);
+                    if (reason) return BLOCK_REASON_LABEL[reason];
+                    update((v) => updateMission(v, m.id, text, { target, unit }));
+                    setEditingMissionId(null);
+                    return null;
+                  }}
+                  onCancel={() => setEditingMissionId(null)}
+                  onRemove={() => {
+                    if (!confirm(`"${m.text}" 미션을 지울까요?`)) return;
+                    update((v) => removeMission(v, m.id));
+                    setEditingMissionId(null);
+                  }}
+                />
+              ) : (
+                <MissionRow
+                  key={m.id}
+                  mission={m}
+                  done={vault ? isMissionDone(vault, m.id, date) : false}
+                  count={vault ? missionCount(vault, m.id, date) : 0}
+                  streak={vault ? missionStreak(vault, m.id, date) : 0}
+                  onToggle={() => update((v) => toggleMissionDone(v, m.id, date))}
+                  onStep={(delta) => update((v) => stepMissionCount(v, m.id, date, delta))}
+                  onEdit={() => setEditingMissionId(m.id)}
+                />
+              )
+            )}
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
           <input
             value={missionDraft}
             onChange={(e) => {
               setMissionDraft(e.target.value);
               setMissionError(null);
             }}
-            placeholder="예: 하루에 한 사람에게 먼저 연락하기"
-            onKeyDown={(e) => e.key === "Enter" && addDraftMission()}
+            placeholder="예: 고객에게 연락하기, 물 마시기"
+            onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && addDraftMission()}
             style={inputStyle}
+            aria-label="새 미션"
           />
-          <button type="button" onClick={addDraftMission} disabled={!missionDraft.trim()} style={primaryBtnStyle}>
-            추가
-          </button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <TargetFields target={targetDraft} unit={unitDraft} onTarget={setTargetDraft} onUnit={setUnitDraft} />
+            <button type="button" onClick={addDraftMission} disabled={!missionDraft.trim()} style={{ ...primaryBtnStyle, alignSelf: "center" }}>
+              추가
+            </button>
+          </div>
         </div>
         {missionError && <p style={{ color: "var(--warn)", fontSize: 12.5, margin: 0 }}>{missionError}</p>}
       </section>
@@ -263,6 +303,152 @@ function RecurringItemRow({ item, done, streak, onToggle, onRemove }: { item: Mi
   );
 }
 
+/** 하루 목표 횟수 + 단위 입력칸 — 비워두면 체크 미션. 새 미션 추가와 수정 화면이 같이 쓴다. */
+function TargetFields({ target, unit, onTarget, onUnit }: { target: string; unit: string; onTarget: (v: string) => void; onUnit: (v: string) => void }) {
+  return (
+    <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, minWidth: 0, fontSize: 13, color: "var(--fg2)" }}>
+      <span style={{ whiteSpace: "nowrap" }}>하루</span>
+      <input
+        inputMode="numeric"
+        value={target}
+        onChange={(e) => onTarget(e.target.value.replace(/\D/g, "").slice(0, String(MAX_MISSION_TARGET).length))}
+        placeholder="횟수"
+        aria-label="하루 목표 횟수 (선택)"
+        style={{ ...inputStyle, flex: "0 0 64px", width: 64, textAlign: "center", padding: "10px 6px" }}
+      />
+      <input
+        value={unit}
+        onChange={(e) => onUnit(e.target.value.slice(0, 6))}
+        placeholder="단위"
+        aria-label="단위 (선택, 예: 명, 잔)"
+        disabled={!target}
+        style={{ ...inputStyle, flex: "0 0 64px", width: 64, textAlign: "center", padding: "10px 6px", opacity: target ? 1 : 0.5 }}
+      />
+      <span style={{ fontSize: 11.5, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{target ? "" : "(비우면 체크만)"}</span>
+    </div>
+  );
+}
+
+/** 오늘의 미션 한 줄 — 체크박스 + 문구 + (횟수 미션이면) − 진행 + 와 진행 막대. 문구를 누르면 수정. */
+function MissionRow({
+  mission,
+  done,
+  count,
+  streak,
+  onToggle,
+  onStep,
+  onEdit,
+}: {
+  mission: Mission;
+  done: boolean;
+  count: number;
+  streak: number;
+  onToggle: () => void;
+  onStep: (delta: number) => void;
+  onEdit: () => void;
+}) {
+  const target = mission.target;
+  return (
+    <div style={{ ...rowStyle, flexDirection: "column", alignItems: "stretch", gap: 8, padding: "10px 10px", background: done ? "color-mix(in srgb, var(--ok) 12%, var(--field))" : "var(--field)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <CheckBox done={done} label={mission.text} onToggle={onToggle} />
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={`${mission.text} 수정`}
+          style={{ flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, textAlign: "left", fontSize: 14, color: done ? "var(--muted)" : "var(--fg)", textDecoration: done && !target ? "line-through" : "none" }}
+        >
+          {mission.text}
+        </button>
+        {streak >= 2 && <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--accent)", whiteSpace: "nowrap" }}>🔥 {streak}일째</span>}
+      </div>
+      {target && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, paddingLeft: 38 }}>
+          <div style={{ flex: 1, height: 6, borderRadius: 3, background: "var(--line)", overflow: "hidden" }} aria-hidden>
+            <div style={{ width: `${Math.min(100, (count / target) * 100)}%`, height: "100%", background: done ? "var(--ok)" : "var(--accent)", borderRadius: 3, transition: "width 0.15s" }} />
+          </div>
+          <button type="button" onClick={() => onStep(-1)} disabled={count === 0} aria-label={`${mission.text} 하나 빼기`} style={{ ...stepBtnStyle, opacity: count === 0 ? 0.4 : 1 }}>
+            −
+          </button>
+          <span aria-live="polite" style={{ minWidth: 58, textAlign: "center", fontSize: 13.5, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: done ? "var(--ok)" : "var(--fg)" }}>
+            {formatMissionProgress(mission, count)}
+          </span>
+          <button type="button" onClick={() => onStep(1)} aria-label={`${mission.text} 하나 더하기`} style={{ ...stepBtnStyle, background: "var(--accent)", color: "var(--accent-fg)", borderColor: "var(--accent)" }}>
+            +
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MissionEditor({
+  mission,
+  onSave,
+  onCancel,
+  onRemove,
+}: {
+  mission: Mission;
+  /** 저장 실패 사유(입력 필터)를 돌려주면 그걸 보여주고, null이면 성공. */
+  onSave: (text: string, target: number | undefined, unit: string) => string | null;
+  onCancel: () => void;
+  onRemove: () => void;
+}) {
+  const [text, setText] = useState(mission.text);
+  const [target, setTarget] = useState(mission.target ? String(mission.target) : "");
+  const [unit, setUnit] = useState(mission.unit ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const save = () => {
+    if (!text.trim()) return;
+    setError(onSave(text.trim(), target ? Number(target) : undefined, unit));
+  };
+  return (
+    <div style={{ ...rowStyle, flexDirection: "column", alignItems: "stretch", gap: 8, padding: 10, border: "1px solid var(--accent)" }}>
+      <input value={text} onChange={(e) => setText(e.target.value)} aria-label="미션 문구" style={inputStyle} autoFocus />
+      <TargetFields target={target} unit={unit} onTarget={setTarget} onUnit={setUnit} />
+      {error && <p style={{ color: "var(--warn)", fontSize: 12.5, margin: 0 }}>{error}</p>}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <button type="button" onClick={onRemove} style={{ background: "none", border: "none", color: "var(--warn)", fontSize: 12.5, padding: 4 }}>
+          삭제
+        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button type="button" onClick={onCancel} style={{ ...primaryBtnStyle, background: "var(--card)", color: "var(--fg2)", border: "1px solid var(--line)" }}>
+            취소
+          </button>
+          <button type="button" onClick={save} disabled={!text.trim()} style={primaryBtnStyle}>
+            저장
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CheckBox({ done, label, onToggle }: { done: boolean; label: string; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={done}
+      aria-label={(done ? "완료 취소: " : "완료 표시: ") + label}
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        border: done ? "1px solid var(--ok)" : "1.5px solid var(--muted)",
+        background: done ? "var(--ok)" : "var(--card)",
+        color: "#fff",
+        fontSize: 15,
+        fontWeight: 700,
+        flexShrink: 0,
+        padding: 0,
+      }}
+    >
+      {done ? "✓" : ""}
+    </button>
+  );
+}
+
 function JournalRow({ entry, onRemove }: { entry: JournalEntry; onRemove: () => void }) {
   return (
     <div style={cardStyle}>
@@ -279,6 +465,19 @@ function JournalRow({ entry, onRemove }: { entry: JournalEntry; onRemove: () => 
 }
 
 const inputStyle: React.CSSProperties = { flex: 1, padding: "10px 12px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--field)", fontSize: 16, color: "var(--fg)" };
+const stepBtnStyle: React.CSSProperties = {
+  width: 36,
+  height: 36,
+  borderRadius: 999,
+  border: "1px solid var(--line)",
+  background: "var(--card)",
+  color: "var(--fg)",
+  fontSize: 19,
+  fontWeight: 600,
+  lineHeight: 1,
+  padding: 0,
+  flexShrink: 0,
+};
 const rowStyle: React.CSSProperties = { display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: "var(--radius)", background: "var(--field)" };
 const promptBoxStyle: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6, padding: 14, borderRadius: 16, background: "var(--accent)" };
 const cardStyle: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px", borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--field)" };

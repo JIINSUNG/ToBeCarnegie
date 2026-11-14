@@ -32,7 +32,7 @@ src/
   lib/parser.ts       한 줄 기록 파서
   lib/derive.ts       다가오는 생일, 관계 온도, 연락 뜸한 사람, 오늘의 추천 연락, 최근 활동, 브리핑, 백업 알림
   lib/books.ts        읽은 책(독후감·글귀) CRUD
-  lib/missions.ts     오늘의 미션(매일 반복 체크) CRUD + 연속일수
+  lib/missions.ts     오늘의 미션(매일 반복) — 체크 미션 + 횟수 미션(target·unit, +/− 카운트) CRUD + 연속일수
   lib/affirmations.ts 오늘의 구호(매일 반복 체크) — missions.ts와 같은 구조
   lib/goals.ts        목표·고치고 싶은 점(한 번 달성하면 끝) CRUD — 같은 Goal 타입, 필드만 다름
   lib/journal.ts       성장 일기(프롬프트 + 자유 기록)
